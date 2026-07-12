@@ -17,7 +17,8 @@
         "express-rate-limit": "^8.5.2",
         "jsonwebtoken": "^9.0.2",
         "nodemailer": "^6.9.4",
-        "pdfkit": "^0.14.0"
+        "pdfkit": "^0.14.0",
+        "resend": "^6.17.2"
     },
     "devDependencies": {
         "nodemon": "^3.0.3"
