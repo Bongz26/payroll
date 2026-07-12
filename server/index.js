@@ -11,20 +11,31 @@ const PORT = process.env.PORT || 5000;
 // Trust Railway / Render reverse proxy so rate limiting uses real client IP
 app.set('trust proxy', 1);
 
+// Serve frontend in production (moved before CORS to avoid blocking static assets)
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+}
+
 // Middleware
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000,http://localhost:3001')
     .split(',')
-    .map(origin => origin.trim())
+    .map(origin => origin.trim().replace(/\/$/, '')) // remove trailing slash
     .filter(Boolean);
+
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        const cleanOrigin = origin.replace(/\/$/, '');
+        if (allowedOrigins.includes(cleanOrigin)) {
             return callback(null, true);
         }
         callback(new Error(`CORS policy: origin ${origin} not allowed`));
     },
     credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -66,10 +77,8 @@ app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/payslips', apiLimiter, require('./routes/payslips'));
 app.use('/api/leave', apiLimiter, require('./routes/leave'));
 
-// Serve frontend in production
+// Catch-all route for React Router (must be after API routes)
 if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../client/dist')));
-    
     app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../client/dist/index.html'));
     });
