@@ -67,7 +67,13 @@ const Calendar = () => {
                             {employeesOnLeave.map((emp, idx) => (
                                 <div key={idx} style={styles.leaveTag} title={emp.employee}>
                                     <span style={styles.leaveIcon}>
-                                        {emp.leaveType === 'sick' ? '🏥' : emp.leaveType === 'annual' ? '✈️' : '📅'}
+                                        {emp.leaveType === 'sick' ? (
+                                            <img src="/assets/sick_leave.png" alt="Sick" style={styles.inlineIcon} />
+                                        ) : emp.leaveType === 'annual' ? (
+                                            <img src="/assets/annual_leave.png" alt="Annual" style={styles.inlineIcon} />
+                                        ) : (
+                                            <img src="/assets/other_leave.png" alt="Other" style={styles.inlineIcon} />
+                                        )}
                                     </span>
                                     <span style={styles.employeeName}>{emp.employee}</span>
                                 </div>
@@ -88,7 +94,10 @@ const Calendar = () => {
             <Navbar />
             <div className="container" style={styles.container}>
                 <div style={styles.header}>
-                    <h1 style={styles.title}>🗓️ Employee Calendar</h1>
+                    <h1 style={styles.title}>
+                        <img src="/assets/calendar_title.png" alt="Calendar" style={{ width: '40px', height: '40px', verticalAlign: 'middle', marginRight: '10px' }} />
+                        Employee Calendar
+                    </h1>
                     <p style={styles.subtitle}>View employee availability and leave schedule</p>
                 </div>
 
@@ -113,15 +122,15 @@ const Calendar = () => {
                     <h3 style={styles.legendTitle}>Legend:</h3>
                     <div style={styles.legendItems}>
                         <div style={styles.legendItem}>
-                            <span style={styles.leaveIcon}>✈️</span>
+                            <img src="/assets/annual_leave.png" alt="Annual Leave" style={styles.legendIcon} />
                             <span>Annual Leave</span>
                         </div>
                         <div style={styles.legendItem}>
-                            <span style={styles.leaveIcon}>🏥</span>
+                            <img src="/assets/sick_leave.png" alt="Sick Leave" style={styles.legendIcon} />
                             <span>Sick Leave</span>
                         </div>
                         <div style={styles.legendItem}>
-                            <span style={styles.leaveIcon}>📅</span>
+                            <img src="/assets/other_leave.png" alt="Other Leave" style={styles.legendIcon} />
                             <span>Other Leave</span>
                         </div>
                     </div>
@@ -214,7 +223,19 @@ const styles = {
         color: '#4B5563',
     },
     leaveIcon: {
-        fontSize: '1.25rem',
+        display: 'flex',
+        alignItems: 'center',
+    },
+    inlineIcon: {
+        width: '14px',
+        height: '14px',
+        objectFit: 'contain',
+        verticalAlign: 'middle',
+    },
+    legendIcon: {
+        width: '24px',
+        height: '24px',
+        objectFit: 'contain',
     },
     calendarCard: {
         padding: '1.5rem',
