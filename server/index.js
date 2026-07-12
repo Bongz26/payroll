@@ -66,13 +66,22 @@ app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/payslips', apiLimiter, require('./routes/payslips'));
 app.use('/api/leave', apiLimiter, require('./routes/leave'));
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        message: 'API endpoint not found'
+// Serve frontend in production
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+    
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
     });
-});
+} else {
+    // 404 handler for API in development
+    app.use((req, res) => {
+        res.status(404).json({
+            success: false,
+            message: 'API endpoint not found'
+        });
+    });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
