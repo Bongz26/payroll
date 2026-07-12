@@ -223,10 +223,20 @@ router.post('/request', authMiddleware, async (req, res) => {
 
         if (error) throw error;
 
+        // Fetch employee details for the email
+        const { data: empData } = await supabase
+            .from('employees')
+            .select('first_name, last_name')
+            .eq('id', req.employee.id)
+            .single();
+
+        const employeeName = empData 
+            ? `${empData.first_name} ${empData.last_name}` 
+            : req.employee.email;
+
         // Notify managers and HR
         const managerEmails = await getManagerEmails();
         const hrEmails = await getHREmails();
-        const employeeName = `${req.employee.first_name} ${req.employee.last_name}`;
         const subject = `New leave request submitted by ${employeeName}`;
         const text = `A new leave request has been submitted by ${employeeName}.\n\nType: ${leave_type}\nStart: ${start_date}\nEnd: ${end_date}\nDays: ${totalDays}\nReason: ${reason || 'Not provided'}\n\nPlease review the request in the payroll system.`;
 
@@ -408,7 +418,8 @@ router.post('/request/:id/approve', authMiddleware, async (req, res) => {
 
         if (updErr) throw updErr;
 
-        const managerName = `${req.employee.first_name} ${req.employee.last_name}`;
+        const { data: managerData } = await supabase.from('employees').select('first_name, last_name').eq('id', callerId).single();
+        const managerName = managerData ? `${managerData.first_name} ${managerData.last_name}` : req.employee.email;
         const { data: employee } = await supabase.from('employees').select('email, first_name, last_name').eq('id', request.employee_id).single();
         const hrEmails = await getHREmails();
 
@@ -460,9 +471,12 @@ router.post('/request/:id/reject', authMiddleware, async (req, res) => {
         if (updErr) throw updErr;
 
         const { data: employee } = await supabase.from('employees').select('email, first_name, last_name').eq('id', request.employee_id).single();
+        const { data: managerData } = await supabase.from('employees').select('first_name, last_name').eq('id', callerId).single();
+        const managerName = managerData ? `${managerData.first_name} ${managerData.last_name}` : req.employee.email;
+
         if (employee) {
             await notifyApprovers({
-                subject: `Leave request rejected by manager ${req.employee.first_name} ${req.employee.last_name}`,
+                subject: `Leave request rejected by manager ${managerName}`,
                 text: `Your leave request from ${request.start_date} to ${request.end_date} has been rejected by your manager. Please contact HR for more information.`,
                 recipients: [employee.email]
             });
