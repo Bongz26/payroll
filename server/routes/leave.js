@@ -55,12 +55,16 @@ const getHREmails = async () => {
 };
 
 const notifyApprovers = async ({ subject, text, html, recipients }) => {
-    if (!recipients || recipients.length === 0) return;
     try {
+        const originalRecipients = Array.isArray(recipients) ? recipients.join(', ') : recipients;
+        const msgText = originalRecipients 
+            ? `[Original intended recipients: ${originalRecipients}]\n\n${text}`
+            : text;
+
         await sendEmail({
-            to: recipients,
+            to: 'support@thusanangfs.co.za',
             subject,
-            text,
+            text: msgText,
             html
         });
     } catch (error) {
