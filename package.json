@@ -1,0 +1,30 @@
+{
+  "name": "thusanang-payroll-system",
+  "version": "1.0.0",
+  "description": "Payroll System for Thusanang Funeral Services - Developed by Dondas Tech",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "cd server && node index.js",
+    "build": "cd server && npm install --omit=dev",
+    "server": "cd server && node index.js",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "keywords": [
+    "payroll",
+    "hr",
+    "thusanang"
+  ],
+  "author": "Dondas Tech",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.7",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

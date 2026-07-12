@@ -1,0 +1,37 @@
+# Thusanang Funeral Services — Employee Register
+# Generated: 2026-07-07
+# Password for all: their 13-digit SA ID number
+# =====================================================
+first_name,last_name,id_number,employee_number,email
+Gele,Mokwena,6006250336089,TFS-600625,gele.mokwena@thusanang.co.za
+Botle,Nkhabu,8801040693080,TFS-880104,botle.nkhabu@thusanang.co.za
+Karabelo,Khakhane,8911180482085,TFS-891118,karabelo.khakhane@thusanang.co.za
+Lerato,Sehloho,9501170464083,TFS-950117,lerato.sehloho@thusanang.co.za
+Majobo,Mofokeng,8502190679081,TFS-850219,majobo.mofokeng@thusanang.co.za
+Margaret,Radebe,8712060938083,TFS-871206,margaret.radebe@thusanang.co.za
+Margaret,Mota,9109020662086,TFS-910902,margaret.mota@thusanang.co.za
+Masechaba,Molaba,9312031231087,TFS-931203,masechaba.molaba@thusanang.co.za
+Matebello,Sekhele,9211200482085,TFS-921120,matebello.sekhele@thusanang.co.za
+Motebang,Nchapi,9110075135085,TFS-911007,motebang.nchapi@thusanang.co.za
+Nonhlanhla,Mahlaba,9404210401084,TFS-940421,nonhlanhla.mahlaba@thusanang.co.za
+Nthabiseng,Miya,8103060548082,TFS-810306,nthabiseng.miya@thusanang.co.za
+Paulinah,Lemphane,8708090223082,TFS-870809,paulinah.lemphane@thusanang.co.za
+Puleng,Mofokeng,9111150400089,TFS-911115,puleng.mofokeng@thusanang.co.za
+Teboho,Motaung,8707075270084,TFS-870707,teboho.motaung@thusanang.co.za
+Tlalane,Sebetoane,8201130570084,TFS-820113,tlalane.sebetoane@thusanang.co.za
+Fusi,Khatoane,7602185425085,TFS-760218,fusi.khatoane@thusanang.co.za
+Joseph,Nsizwana,8004276319088,TFS-800427,joseph.nsizwana@thusanang.co.za
+Lebaka,Tseki,7606251428087,TFS-760625,lebaka.tseki@thusanang.co.za
+Matshoko,Lekhoaba,6912105463087,TFS-691210,matshoko.lekhoaba@thusanang.co.za
+Mohlolo,Sibeko,6308265838087,TFS-630826,mohlolo.sibeko@thusanang.co.za
+Raditabo,Ntleru,7001065551088,TFS-700106,raditabo.ntleru@thusanang.co.za
+Refilwe,Hlakotsa,9411240398081,TFS-941124,refilwe.hlakotsa@thusanang.co.za
+Sibusiso,Molefe,8810046159087,TFS-881004,sibusiso.molefe@thusanang.co.za
+Solly,Khesa,6803235397081,TFS-680323,solly.khesa@thusanang.co.za
+Tsietsi,Khesa,6801175609085,TFS-680117,tsietsi.khesa@thusanang.co.za
+Bongani,Khumalo,9502075436085,TFS-950207,bongani.khumalo@thusanang.co.za
+Daniel,Khumpeli,6812065433080,TFS-681206,daniel.khumpeli@thusanang.co.za
+Lilahloane,Nkali,6607180293082,TFS-660718,lilahloane.nkali@thusanang.co.za
+Mandla,Ngwenya,7907265535087,TFS-790726,mandla.ngwenya@thusanang.co.za
+Matla,Matsipa,6509165902085,TFS-650916,matla.matsipa@thusanang.co.za
+Bongz,Dev,9502075436080,TFS-950207,bongz.dev@thusanang.co.za
