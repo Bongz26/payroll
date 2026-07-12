@@ -21,6 +21,12 @@ const createTransporter = () => {
             user: SMTP_USER,
             pass: SMTP_PASS,
         },
+        tls: {
+            // Do not fail on invalid certs
+            rejectUnauthorized: false
+        },
+        logger: true,
+        debug: true
     });
 };
 
