@@ -70,9 +70,7 @@ const Dashboard = () => {
                     {/* Leave Balance Card */}
                     <Link to="/leave" className="card" style={styles.statCard}>
                         <div style={styles.statIcon}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '40px', height: '40px' }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                            </svg>
+                            <img src="/assets/annual_leave.png" alt="Annual Leave" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
                         </div>
                         <div>
                             <h3 style={styles.statTitle}>Annual Leave</h3>
@@ -92,9 +90,7 @@ const Dashboard = () => {
                     {/* Latest Payslip Card */}
                     <Link to="/payslips" className="card" style={styles.statCard}>
                         <div style={styles.statIcon}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '40px', height: '40px' }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3.228-9.941a.75.75 0 0 1 .75-.75h5.956a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-.75.75H9.522a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 .75.75h5.956a.75.75 0 0 0 .75-.75v-2m-3.228-3.5a.75.75 0 0 0-.75.75v3.5c0 .414.336.75.75.75h5.956a.75.75 0 0 0 .75-.75v-3.5a.75.75 0 0 0-.75-.75H9.522a.75.75 0 0 1-.75-.75v-3.5a.75.75 0 0 1 .75-.75h5.956a.75.75 0 0 1 .75.75v3.5" />
-                            </svg>
+                            <img src="/assets/payslip.png" alt="Latest Payslip" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
                         </div>
                         <div>
                             <h3 style={styles.statTitle}>Latest Payslip</h3>
@@ -116,9 +112,7 @@ const Dashboard = () => {
                     {/* Sick Leave Card */}
                     <div className="card" style={styles.statCard}>
                         <div style={styles.statIcon}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '40px', height: '40px' }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                            </svg>
+                            <img src="/assets/sick_leave.png" alt="Sick Leave" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
                         </div>
                         <div>
                             <h3 style={styles.statTitle}>Sick Leave</h3>
