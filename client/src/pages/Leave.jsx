@@ -13,6 +13,10 @@ const Leave = () => {
     const [isManager, setIsManager] = useState(false);
     const [isHR, setIsHR] = useState(false);
 
+    // UX state for approvals
+    const [processingId, setProcessingId] = useState(null);
+    const [rejectSubmitting, setRejectSubmitting] = useState(false);
+
     // Modal state for rejection
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectInfo, setRejectInfo] = useState({ id: null, type: null, reason: '' });
@@ -86,12 +90,16 @@ const Leave = () => {
 
     const handleApprove = async (id) => {
         try {
+            setProcessingId(id);
             await api.post(`/leave/request/${id}/approve`);
             await fetchLeaveData();
             await refreshPending();
+            setMessage({ type: 'success', text: 'Leave request approved successfully.' });
         } catch (err) {
             console.error('Approve error:', err);
             setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to approve' });
+        } finally {
+            setProcessingId(null);
         }
     };
 
@@ -102,12 +110,16 @@ const Leave = () => {
 
     const handleHRApprove = async (id) => {
         try {
+            setProcessingId(id);
             await api.post(`/leave/request/${id}/hr-approve`);
             await fetchLeaveData();
             await refreshHRPending();
+            setMessage({ type: 'success', text: 'Leave request approved by HR.' });
         } catch (err) {
             console.error('HR approve error:', err);
             setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to approve by HR' });
+        } finally {
+            setProcessingId(null);
         }
     };
 
@@ -123,7 +135,7 @@ const Leave = () => {
         }
         
         try {
-            setRejectModalOpen(false);
+            setRejectSubmitting(true);
             const endpoint = rejectInfo.type === 'hr' 
                 ? `/leave/request/${rejectInfo.id}/hr-reject`
                 : `/leave/request/${rejectInfo.id}/reject`;
@@ -134,9 +146,12 @@ const Leave = () => {
             else await refreshPending();
             
             setMessage({ type: 'success', text: 'Leave request rejected successfully.' });
+            setRejectModalOpen(false);
         } catch (err) {
             console.error('Reject error:', err);
             setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to reject' });
+        } finally {
+            setRejectSubmitting(false);
         }
     };
 
@@ -479,8 +494,21 @@ const Leave = () => {
                                                                 <td>{r.total_days}</td>
                                                                 <td>{r.reason}</td>
                                                                 <td>
-                                                                    <button className="btn btn-sm btn-primary" onClick={() => handleApprove(r.id)} style={{ marginRight: 8 }}>Approve</button>
-                                                                    <button className="btn btn-sm btn-secondary" onClick={() => handleReject(r.id)}>Reject</button>
+                                                                    <button 
+                                                                        className="btn btn-sm btn-primary" 
+                                                                        onClick={() => handleApprove(r.id)} 
+                                                                        disabled={processingId === r.id}
+                                                                        style={{ marginRight: 8, opacity: processingId === r.id ? 0.7 : 1 }}
+                                                                    >
+                                                                        {processingId === r.id ? 'Approving...' : 'Approve'}
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn btn-sm btn-secondary" 
+                                                                        onClick={() => handleReject(r.id)}
+                                                                        disabled={processingId === r.id}
+                                                                    >
+                                                                        Reject
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -520,8 +548,21 @@ const Leave = () => {
                                                                 <td>{r.total_days}</td>
                                                                 <td>{r.reason}</td>
                                                                 <td>
-                                                                    <button className="btn btn-sm btn-primary" onClick={() => handleHRApprove(r.id)} style={{ marginRight: 8 }}>Approve</button>
-                                                                    <button className="btn btn-sm btn-secondary" onClick={() => handleHRReject(r.id)}>Reject</button>
+                                                                    <button 
+                                                                        className="btn btn-sm btn-primary" 
+                                                                        onClick={() => handleHRApprove(r.id)} 
+                                                                        disabled={processingId === r.id}
+                                                                        style={{ marginRight: 8, opacity: processingId === r.id ? 0.7 : 1 }}
+                                                                    >
+                                                                        {processingId === r.id ? 'Approving...' : 'Approve'}
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn btn-sm btn-secondary" 
+                                                                        onClick={() => handleHRReject(r.id)}
+                                                                        disabled={processingId === r.id}
+                                                                    >
+                                                                        Reject
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -552,8 +593,10 @@ const Leave = () => {
                             style={{ width: '100%', marginBottom: '1rem' }}
                         />
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                            <button className="btn btn-secondary" onClick={() => setRejectModalOpen(false)}>Cancel</button>
-                            <button className="btn btn-primary" style={{ backgroundColor: '#DC2626' }} onClick={confirmReject}>Confirm Reject</button>
+                            <button className="btn btn-secondary" onClick={() => setRejectModalOpen(false)} disabled={rejectSubmitting}>Cancel</button>
+                            <button className="btn btn-primary" style={{ backgroundColor: '#DC2626', opacity: rejectSubmitting ? 0.7 : 1 }} onClick={confirmReject} disabled={rejectSubmitting}>
+                                {rejectSubmitting ? 'Rejecting...' : 'Confirm Reject'}
+                            </button>
                         </div>
                     </div>
                 </div>
