@@ -121,6 +121,20 @@ const startServer = async () => {
         console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
         console.log(`🗄️  Database: ${dbConnected ? 'Connected' : 'Not Connected'}`);
         console.log('='.repeat(50));
+
+        // Self-ping to prevent Render free-tier sleep
+        if (process.env.NODE_ENV === 'production') {
+            const https = require('https');
+            const url = 'https://tfspayroll.onrender.com/health';
+            setInterval(() => {
+                https.get(url, (res) => {
+                    console.log(`Self-ping successful: ${res.statusCode}`);
+                }).on('error', (err) => {
+                    console.error(`Self-ping failed: ${err.message}`);
+                });
+            }, 10 * 60 * 1000); // 10 minutes
+            console.log('⏰ Self-ping mechanism activated');
+        }
     });
 };
 
