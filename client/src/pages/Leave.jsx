@@ -13,6 +13,10 @@ const Leave = () => {
     const [isManager, setIsManager] = useState(false);
     const [isHR, setIsHR] = useState(false);
 
+    // Modal state for rejection
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectInfo, setRejectInfo] = useState({ id: null, type: null, reason: '' });
+
     // Form state
     const [formData, setFormData] = useState({
         leave_type: 'annual',
@@ -91,15 +95,9 @@ const Leave = () => {
         }
     };
 
-    const handleReject = async (id) => {
-        try {
-            await api.post(`/leave/request/${id}/reject`);
-            await fetchLeaveData();
-            await refreshPending();
-        } catch (err) {
-            console.error('Reject error:', err);
-            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to reject' });
-        }
+    const handleReject = (id) => {
+        setRejectInfo({ id, type: 'manager', reason: '' });
+        setRejectModalOpen(true);
     };
 
     const handleHRApprove = async (id) => {
@@ -113,14 +111,32 @@ const Leave = () => {
         }
     };
 
-    const handleHRReject = async (id) => {
+    const handleHRReject = (id) => {
+        setRejectInfo({ id, type: 'hr', reason: '' });
+        setRejectModalOpen(true);
+    };
+
+    const confirmReject = async () => {
+        if (!rejectInfo.reason.trim()) {
+            setMessage({ type: 'error', text: 'Please provide a reason for rejection.' });
+            return;
+        }
+        
         try {
-            await api.post(`/leave/request/${id}/hr-reject`);
+            setRejectModalOpen(false);
+            const endpoint = rejectInfo.type === 'hr' 
+                ? `/leave/request/${rejectInfo.id}/hr-reject`
+                : `/leave/request/${rejectInfo.id}/reject`;
+                
+            await api.post(endpoint, { rejection_reason: rejectInfo.reason });
             await fetchLeaveData();
-            await refreshHRPending();
+            if (rejectInfo.type === 'hr') await refreshHRPending();
+            else await refreshPending();
+            
+            setMessage({ type: 'success', text: 'Leave request rejected successfully.' });
         } catch (err) {
-            console.error('HR reject error:', err);
-            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to reject by HR' });
+            console.error('Reject error:', err);
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to reject' });
         }
     };
 
@@ -415,6 +431,11 @@ const Leave = () => {
                                                     <span className={`badge badge-${getStatusColor(request.status)}`}>
                                                         {getStatusLabel(request)}
                                                     </span>
+                                                    {request.status === 'rejected' && request.rejection_reason && (
+                                                        <div style={{ fontSize: '0.8rem', color: '#DC2626', marginTop: '4px' }}>
+                                                            <strong>Reason:</strong> {request.rejection_reason}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td>{format(new Date(request.created_at), 'MMM dd, yyyy')}</td>
                                             </tr>
@@ -513,6 +534,30 @@ const Leave = () => {
                             </div>
                         )}
             </div>
+
+            {/* Rejection Modal */}
+            {rejectModalOpen && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent} className="fade-in">
+                        <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#111827' }}>Reject Leave Request</h3>
+                        <p style={{ marginBottom: '1rem', color: '#6B7280', fontSize: '0.9rem' }}>
+                            Please provide a reason for rejecting this leave request. This will be sent to the employee.
+                        </p>
+                        <textarea
+                            className="form-textarea"
+                            rows="4"
+                            placeholder="Type reason here..."
+                            value={rejectInfo.reason}
+                            onChange={(e) => setRejectInfo({ ...rejectInfo, reason: e.target.value })}
+                            style={{ width: '100%', marginBottom: '1rem' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                            <button className="btn btn-secondary" onClick={() => setRejectModalOpen(false)}>Cancel</button>
+                            <button className="btn btn-primary" style={{ backgroundColor: '#DC2626' }} onClick={confirmReject}>Confirm Reject</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -591,9 +636,30 @@ const styles = {
     },
     balanceBarFill: {
         height: '100%',
-        background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-        borderRadius: '999px',
-        transition: 'width 0.5s ease',
+        backgroundColor: '#10B981',
+        borderRadius: '9999px',
+        transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+    },
+    modalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        backdropFilter: 'blur(4px)',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '2rem',
+        width: '90%',
+        maxWidth: '500px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     },
     tabs: {
         display: 'flex',

@@ -461,9 +461,15 @@ router.post('/request/:id/reject', authMiddleware, async (req, res) => {
         if (!request) return res.status(404).json({ success: false, message: 'Leave request not found' });
         if (request.status !== 'pending' || request.manager_approved_by) return res.status(400).json({ success: false, message: 'Leave request is not pending manager approval' });
 
+        const { rejection_reason } = req.body;
         const { data: updated, error: updErr } = await supabase
             .from('leave_requests')
-            .update({ status: 'rejected', manager_approved_by: callerId, manager_approved_at: new Date().toISOString() })
+            .update({ 
+                status: 'rejected', 
+                manager_approved_by: callerId, 
+                manager_approved_at: new Date().toISOString(),
+                rejection_reason: rejection_reason || null 
+            })
             .eq('id', requestId)
             .select()
             .single();
@@ -477,7 +483,7 @@ router.post('/request/:id/reject', authMiddleware, async (req, res) => {
         if (employee) {
             await notifyApprovers({
                 subject: `Leave request rejected by manager ${managerName}`,
-                text: `Your leave request from ${request.start_date} to ${request.end_date} has been rejected by your manager. Please contact HR for more information.`,
+                text: `Your leave request from ${request.start_date} to ${request.end_date} has been rejected by your manager.\n\nReason: ${rejection_reason || 'No reason provided.'}\n\nPlease contact HR for more information.`,
                 recipients: [employee.email]
             });
         }
@@ -597,9 +603,15 @@ router.post('/request/:id/hr-reject', authMiddleware, async (req, res) => {
         if (!request) return res.status(404).json({ success: false, message: 'Leave request not found' });
         if (request.status !== 'pending' || !request.manager_approved_by) return res.status(400).json({ success: false, message: 'Leave request is not pending HR approval' });
 
+        const { rejection_reason } = req.body;
         const { data: updated, error: updErr } = await supabase
             .from('leave_requests')
-            .update({ status: 'rejected', hr_approved_by: callerId, hr_approved_at: new Date().toISOString() })
+            .update({ 
+                status: 'rejected', 
+                hr_approved_by: callerId, 
+                hr_approved_at: new Date().toISOString(),
+                rejection_reason: rejection_reason || null
+            })
             .eq('id', requestId)
             .select()
             .single();
@@ -610,7 +622,7 @@ router.post('/request/:id/hr-reject', authMiddleware, async (req, res) => {
         if (employee) {
             await notifyApprovers({
                 subject: `Leave request rejected by HR`,
-                text: `Your leave request from ${request.start_date} to ${request.end_date} has been rejected by HR. Please contact HR for next steps.`,
+                text: `Your leave request from ${request.start_date} to ${request.end_date} has been rejected by HR.\n\nReason: ${rejection_reason || 'No reason provided.'}\n\nPlease contact HR for next steps.`,
                 recipients: [employee.email]
             });
         }
