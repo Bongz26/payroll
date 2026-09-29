@@ -26,7 +26,7 @@ app.use(cors({
     origin: (origin, callback) => {
         // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        
+
         const cleanOrigin = origin.replace(/\/$/, '');
         if (allowedOrigins.includes(cleanOrigin)) {
             return callback(null, true);
@@ -125,7 +125,8 @@ const startServer = async () => {
         // Self-ping to prevent Render free-tier sleep
         if (process.env.NODE_ENV === 'production') {
             const https = require('https');
-            const url = 'https://tfspayroll.onrender.com/health';
+            const url = process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL}/health` : 'https://tpayroll.onrender.com/health';
+            
             setInterval(() => {
                 https.get(url, (res) => {
                     console.log(`Self-ping successful: ${res.statusCode}`);
