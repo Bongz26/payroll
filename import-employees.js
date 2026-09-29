@@ -289,6 +289,10 @@ async function csvMode(csvPath) {
         if (!row.email && row.first_name && row.last_name) {
             row.email = suggestEmail(row.first_name, row.last_name);
         }
+        // Default hire_date to today if not provided in CSV
+        if (!row.hire_date) {
+            row.hire_date = new Date().toISOString().split('T')[0];
+        }
 
         const name = `${row.first_name} ${row.last_name}`;
         log(`  Importing ${name}...`);

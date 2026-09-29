@@ -3,14 +3,18 @@ const { supabase } = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const { format, differenceInDays, parseISO, eachDayOfInterval } = require('date-fns');
 const { sendEmail } = require('../utils/email');
+const { getApprovalRouting, isApproverForApplicant } = require('../utils/leaveApprovers');
 
 const router = express.Router();
 
 // Helper to check manager role
 const isManagerUser = async (employeeId) => {
     try {
-        const { data: caller } = await supabase.from('employees').select('job_title, department').eq('id', employeeId).single();
+        const { data: caller } = await supabase.from('employees').select('email, job_title, department').eq('id', employeeId).single();
         if (!caller) return false;
+        const email = (caller.email || '').toLowerCase();
+        const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
+        if (managerEmails.includes(email)) return true;
         const job = (caller.job_title || '').toLowerCase();
         const dept = (caller.department || '').toLowerCase();
         return job.includes('manager') || job.includes('director') || job.includes('supervisor') || dept === 'operations' || dept === 'administration';
@@ -234,16 +238,23 @@ router.post('/request', authMiddleware, async (req, res) => {
             ? `${empData.first_name} ${empData.last_name}` 
             : req.employee.email;
 
-        // Notify managers and HR
-        const managerEmails = await getManagerEmails();
-        const hrEmails = await getHREmails();
+        // Route leave request notification to assigned primary approver and CC list
+        const routing = getApprovalRouting(req.employee.email);
         const subject = `New leave request submitted by ${employeeName}`;
-        const text = `A new leave request has been submitted by ${employeeName}.\n\nType: ${leave_type}\nStart: ${start_date}\nEnd: ${end_date}\nDays: ${totalDays}\nReason: ${reason || 'Not provided'}\n\nPlease review the request in the payroll system.`;
+        const text = `A new leave request has been submitted by ${employeeName}.\n\n` +
+            `Type: ${leave_type}\n` +
+            `Start: ${start_date}\n` +
+            `End: ${end_date}\n` +
+            `Days: ${totalDays}\n` +
+            `Reason: ${reason || 'Not provided'}\n\n` +
+            `Approver: ${routing.approverEmail}\n` +
+            `CC: ${routing.ccEmails.join(', ')}\n\n` +
+            `Please review the request in the payroll system.`;
 
         await notifyApprovers({
             subject,
             text,
-            recipients: [...new Set([...managerEmails, ...hrEmails])]
+            recipients: routing.allRecipients
         });
 
         res.status(201).json({
@@ -336,19 +347,26 @@ router.get('/calendar', authMiddleware, async (req, res) => {
 router.get('/pending', authMiddleware, async (req, res) => {
     try {
         const callerId = req.employee.id;
+        const callerEmail = req.employee.email;
         const allowed = await isManagerUser(callerId);
         if (!allowed) return res.status(403).json({ success: false, message: 'Access denied' });
 
         const { data: requests, error } = await supabase
             .from('leave_requests')
-            .select('*, employees:employee_id (id, first_name, last_name, employee_number)')
+            .select('*, employees:employee_id (id, first_name, last_name, employee_number, email)')
             .eq('status', 'pending')
             .is('manager_approved_by', null)
             .order('created_at', { ascending: true });
 
         if (error) throw error;
 
-        res.json({ success: true, requests: requests || [] });
+        // Filter requests that the logged-in manager is authorized to approve
+        const filteredRequests = (requests || []).filter(reqItem => {
+            const applicantEmail = reqItem.employees?.email;
+            return isApproverForApplicant(callerEmail, applicantEmail);
+        });
+
+        res.json({ success: true, requests: filteredRequests });
     } catch (err) {
         console.error('Fetch pending requests error:', err);
         res.status(500).json({ success: false, message: 'Error fetching pending requests' });
