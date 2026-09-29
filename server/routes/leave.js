@@ -60,15 +60,14 @@ const getHREmails = async () => {
 
 const notifyApprovers = async ({ subject, text, html, recipients }) => {
     try {
-        const originalRecipients = Array.isArray(recipients) ? recipients.join(', ') : recipients;
-        const msgText = originalRecipients 
-            ? `[Original intended recipients: ${originalRecipients}]\n\n${text}`
-            : text;
+        const targetRecipients = recipients && (Array.isArray(recipients) ? recipients.length > 0 : true)
+            ? recipients
+            : 'support@thusanangfs.co.za';
 
         await sendEmail({
-            to: 'support@thusanangfs.co.za',
+            to: targetRecipients,
             subject,
-            text: msgText,
+            text,
             html
         });
     } catch (error) {
