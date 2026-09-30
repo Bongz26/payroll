@@ -28,8 +28,41 @@ const Leave = () => {
         end_date: '',
         reason: '',
     });
+    const [attachmentInfo, setAttachmentInfo] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState(null);
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            setAttachmentInfo(null);
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setMessage({ type: 'error', text: 'File size must be under 5MB.' });
+            e.target.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setAttachmentInfo({
+                attachmentData: reader.result,
+                attachmentName: file.name,
+                attachmentType: file.type
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const getAttachmentUrl = (reqItem) => {
+        if (reqItem.attachment_url) return reqItem.attachment_url;
+        if (reqItem.reason && reqItem.reason.includes('[Attached Document]:')) {
+            const match = reqItem.reason.match(/\[Attached Document\]:\s*(https:\/\/[^\s]+)/);
+            if (match) return match[1];
+        }
+        return null;
+    };
+
 
     useEffect(() => {
         fetchLeaveData();
@@ -48,10 +81,11 @@ const Leave = () => {
             const stored = localStorage.getItem('employee');
             if (stored) {
                 const emp = JSON.parse(stored);
-                const job = (emp.job_title || '').toLowerCase();
-                const dept = (emp.department || '').toLowerCase();
-                const managerFlag = job.includes('manager') || job.includes('director') || job.includes('supervisor') || dept === 'operations' || dept === 'administration';
+                const email = (emp.email || '').toLowerCase();
+                const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
+                const managerFlag = managerEmails.includes(email) || job.includes('manager') || job.includes('director') || job.includes('supervisor') || dept === 'operations' || dept === 'administration';
                 const hrFlag = job.includes('hr') || dept === 'administration';
+
                 setIsManager(managerFlag);
                 setIsHR(hrFlag);
                 if (managerFlag) {
@@ -161,7 +195,11 @@ const Leave = () => {
         setMessage(null);
 
         try {
-            const response = await api.post('/leave/request', formData);
+            const payload = {
+                ...formData,
+                ...(attachmentInfo || {})
+            };
+            const response = await api.post('/leave/request', payload);
             setMessage({ type: 'success', text: response.data.message });
             setFormData({
                 leave_type: 'annual',
@@ -169,6 +207,7 @@ const Leave = () => {
                 end_date: '',
                 reason: '',
             });
+            setAttachmentInfo(null);
             fetchLeaveData(); // Refresh data
         } catch (error) {
             setMessage({
@@ -179,6 +218,7 @@ const Leave = () => {
             setSubmitting(false);
         }
     };
+
 
     if (loading) {
         return (
@@ -402,6 +442,22 @@ const Leave = () => {
                                 />
                             </div>
 
+                            <div className="form-group">
+                                <label className="form-label">
+                                    Attach Sick Note / Document {formData.leave_type === 'sick' && <span style={{ color: '#DC2626' }}>(Recommended for Sick Leave)</span>}
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*,.pdf,.doc,.docx"
+                                    className="form-input"
+                                    onChange={handleFileChange}
+                                />
+                                <p style={{ fontSize: '0.8rem', color: '#6B7280', marginTop: '4px' }}>
+                                    Accepted formats: PDF, PNG, JPG, JPEG, DOCX (Max size: 5MB)
+                                </p>
+                            </div>
+
+
                             <button
                                 type="submit"
                                 className="btn btn-primary btn-lg"
@@ -438,6 +494,18 @@ const Leave = () => {
                                             <tr key={request.id}>
                                                 <td>
                                                     {request.leave_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                    {getAttachmentUrl(request) && (
+                                                        <div style={{ marginTop: '4px' }}>
+                                                            <a 
+                                                                href={getAttachmentUrl(request)} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: '#D4145A', fontWeight: '600', textDecoration: 'underline', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                            >
+                                                                📎 View Sick Note
+                                                            </a>
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td>{format(new Date(request.start_date), 'MMM dd, yyyy')}</td>
                                                 <td>{format(new Date(request.end_date), 'MMM dd, yyyy')}</td>
@@ -480,7 +548,7 @@ const Leave = () => {
                                                             <th>Start</th>
                                                             <th>End</th>
                                                             <th>Days</th>
-                                                            <th>Reason</th>
+                                                            <th>Reason / Note</th>
                                                             <th>Actions</th>
                                                         </tr>
                                                     </thead>
@@ -492,7 +560,21 @@ const Leave = () => {
                                                                 <td>{format(new Date(r.start_date), 'MMM dd, yyyy')}</td>
                                                                 <td>{format(new Date(r.end_date), 'MMM dd, yyyy')}</td>
                                                                 <td>{r.total_days}</td>
-                                                                <td>{r.reason}</td>
+                                                                <td>
+                                                                    {r.reason}
+                                                                    {getAttachmentUrl(r) && (
+                                                                        <div style={{ marginTop: '4px' }}>
+                                                                            <a 
+                                                                                href={getAttachmentUrl(r)} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer"
+                                                                                style={{ color: '#D4145A', fontWeight: '600', textDecoration: 'underline', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                                            >
+                                                                                📎 View Attached Note
+                                                                            </a>
+                                                                        </div>
+                                                                    )}
+                                                                </td>
                                                                 <td>
                                                                     <button 
                                                                         className="btn btn-sm btn-primary" 
@@ -534,7 +616,7 @@ const Leave = () => {
                                                             <th>Start</th>
                                                             <th>End</th>
                                                             <th>Days</th>
-                                                            <th>Reason</th>
+                                                            <th>Reason / Note</th>
                                                             <th>Actions</th>
                                                         </tr>
                                                     </thead>
@@ -546,7 +628,21 @@ const Leave = () => {
                                                                 <td>{format(new Date(r.start_date), 'MMM dd, yyyy')}</td>
                                                                 <td>{format(new Date(r.end_date), 'MMM dd, yyyy')}</td>
                                                                 <td>{r.total_days}</td>
-                                                                <td>{r.reason}</td>
+                                                                <td>
+                                                                    {r.reason}
+                                                                    {getAttachmentUrl(r) && (
+                                                                        <div style={{ marginTop: '4px' }}>
+                                                                            <a 
+                                                                                href={getAttachmentUrl(r)} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer"
+                                                                                style={{ color: '#D4145A', fontWeight: '600', textDecoration: 'underline', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                                            >
+                                                                                📎 View Attached Note
+                                                                            </a>
+                                                                        </div>
+                                                                    )}
+                                                                </td>
                                                                 <td>
                                                                     <button 
                                                                         className="btn btn-sm btn-primary" 
@@ -574,6 +670,7 @@ const Leave = () => {
                                 )}
                             </div>
                         )}
+
             </div>
 
             {/* Rejection Modal */}

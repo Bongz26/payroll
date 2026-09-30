@@ -5,10 +5,10 @@
 
 const APPROVAL_GROUPS = {
     // Group 1: Approved by admin@thusanangfs.co.za
-    // CC: manager@thusanangfs.co.za, management@thusanangfs.co.za
+    // CC: manager@thusanangfs.co.za, management@thusanangfs.co.za, support@thusanangfs.co.za
     admin: {
         approverEmail: 'admin@thusanangfs.co.za',
-        ccEmails: ['manager@thusanangfs.co.za', 'management@thusanangfs.co.za'],
+        ccEmails: ['manager@thusanangfs.co.za', 'management@thusanangfs.co.za', 'support@thusanangfs.co.za'],
         employees: [
             'gele.mokwena@thusanang.co.za',
             'botle.nkhabu@thusanang.co.za',
@@ -28,10 +28,10 @@ const APPROVAL_GROUPS = {
     },
 
     // Group 2: Approved by manager@thusanangfs.co.za
-    // CC: management@thusanangfs.co.za
+    // CC: management@thusanangfs.co.za, support@thusanangfs.co.za
     manager: {
         approverEmail: 'manager@thusanangfs.co.za',
-        ccEmails: ['management@thusanangfs.co.za'],
+        ccEmails: ['management@thusanangfs.co.za', 'support@thusanangfs.co.za'],
         employees: [
             'majobo.mofokeng@thusanang.co.za',
             'admin@thusanangfs.co.za',
@@ -47,10 +47,10 @@ const APPROVAL_GROUPS = {
     },
 
     // Group 3: Approved by fleet@thusanangfs.co.za
-    // CC: management@thusanangfs.co.za
+    // CC: management@thusanangfs.co.za, support@thusanangfs.co.za
     fleet: {
         approverEmail: 'fleet@thusanangfs.co.za',
-        ccEmails: ['management@thusanangfs.co.za'],
+        ccEmails: ['management@thusanangfs.co.za', 'support@thusanangfs.co.za'],
         employees: [
             'solly.khesa@thusanang.co.za',
             'tsietsi.khesa@thusanang.co.za',
@@ -81,7 +81,7 @@ function getApprovalRouting(applicantEmail) {
 
     // Default fallback if employee is not explicitly mapped
     const defaultApprover = 'manager@thusanangfs.co.za';
-    const defaultCC = ['management@thusanangfs.co.za'];
+    const defaultCC = ['management@thusanangfs.co.za', 'support@thusanangfs.co.za'];
     return {
         approverEmail: defaultApprover,
         ccEmails: defaultCC,
@@ -97,13 +97,21 @@ function isApproverForApplicant(managerEmail, applicantEmail) {
     const routing = getApprovalRouting(applicantEmail);
     const cleanManager = (managerEmail || '').trim().toLowerCase();
     
-    // Check direct match or fleet alias match for Lucas Sibeko
+    // Check direct match or role email aliases:
+    // Lucas Sibeko approves Fleet requests
+    if (routing.approverEmail === 'fleet@thusanangfs.co.za' && (cleanManager === 'fleet@thusanangfs.co.za' || cleanManager === 'lucas.sibeko@thusanang.co.za')) return true;
+
+    // Majobo Mofokeng approves Admin requests
+    if (routing.approverEmail === 'admin@thusanangfs.co.za' && (cleanManager === 'admin@thusanangfs.co.za' || cleanManager === 'majobo.mofokeng@thusanang.co.za')) return true;
+
+    // Matla Matsipa approves Manager / General requests
+    if (routing.approverEmail === 'manager@thusanangfs.co.za' && (cleanManager === 'manager@thusanangfs.co.za' || cleanManager === 'matla.matsipa@thusanang.co.za')) return true;
+
+    // Direct match check
     if (cleanManager === routing.approverEmail.toLowerCase()) return true;
-    if (routing.approverEmail === 'fleet@thusanangfs.co.za' && cleanManager === 'lucas.sibeko@thusanang.co.za') return true;
-    if (routing.approverEmail === 'admin@thusanangfs.co.za' && cleanManager === 'majobo.mofokeng@thusanang.co.za') return true;
     
     // Super admins / HR directors have global approval rights
-    const globalApprovers = ['admin@thusanangfs.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
+    const globalApprovers = ['admin@thusanangfs.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'matla.matsipa@thusanang.co.za'];
     if (globalApprovers.includes(cleanManager)) return true;
 
     return false;

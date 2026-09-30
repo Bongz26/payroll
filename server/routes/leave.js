@@ -13,7 +13,8 @@ const isManagerUser = async (employeeId) => {
         const { data: caller } = await supabase.from('employees').select('email, job_title, department').eq('id', employeeId).single();
         if (!caller) return false;
         const email = (caller.email || '').toLowerCase();
-        const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
+        const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
+
         if (managerEmails.includes(email)) return true;
         const job = (caller.job_title || '').toLowerCase();
         const dept = (caller.department || '').toLowerCase();
@@ -60,12 +61,20 @@ const getHREmails = async () => {
 
 const notifyApprovers = async ({ subject, text, html, recipients }) => {
     try {
-        const targetRecipients = recipients && (Array.isArray(recipients) ? recipients.length > 0 : true)
-            ? recipients
-            : 'support@thusanangfs.co.za';
+        let recipientList = [];
+        if (Array.isArray(recipients)) {
+            recipientList = [...recipients];
+        } else if (typeof recipients === 'string' && recipients.length > 0) {
+            recipientList = [recipients];
+        }
+
+        // Ensure support@thusanangfs.co.za always receives a copy of all leave emails
+        if (!recipientList.includes('support@thusanangfs.co.za')) {
+            recipientList.push('support@thusanangfs.co.za');
+        }
 
         await sendEmail({
-            to: targetRecipients,
+            to: recipientList,
             subject,
             text,
             html
@@ -209,22 +218,70 @@ router.post('/request', authMiddleware, async (req, res) => {
             }
         }
 
-        // Insert leave request
-        const { data: request, error } = await supabase
+        // Handle sick note / document upload if provided
+        let attachmentUrl = null;
+        if (req.body.attachmentData) {
+            try {
+                const base64Data = req.body.attachmentData.replace(/^data:[^;]+;base64,/, '');
+                const buffer = Buffer.from(base64Data, 'base64');
+                const origName = req.body.attachmentName || 'document.pdf';
+                const ext = origName.split('.').pop() || 'pdf';
+                const fileName = `sicknote_${req.employee.id}_${Date.now()}.${ext}`;
+                const contentType = req.body.attachmentType || 'application/octet-stream';
+
+                const { data: uploadData, error: uploadErr } = await supabase.storage
+                    .from('sick-notes')
+                    .upload(fileName, buffer, { contentType, upsert: true });
+
+                if (!uploadErr && uploadData) {
+                    const { data: publicUrlData } = supabase.storage
+                        .from('sick-notes')
+                        .getPublicUrl(fileName);
+                    attachmentUrl = publicUrlData.publicUrl;
+                } else if (uploadErr) {
+                    console.error('Sick note upload error:', uploadErr);
+                }
+            } catch (attErr) {
+                console.error('Error processing attachment:', attErr);
+            }
+        }
+
+        // Prepare insert payload
+        const insertPayload = {
+            employee_id: req.employee.id,
+            leave_type,
+            start_date,
+            end_date,
+            total_days: totalDays,
+            reason: attachmentUrl ? `${reason || ''}\n\n[Attached Document]: ${attachmentUrl}`.trim() : reason,
+            status: 'pending'
+        };
+
+        if (attachmentUrl) {
+            insertPayload.attachment_url = attachmentUrl;
+        }
+
+        let request;
+        let { data: insData, error: insErr } = await supabase
             .from('leave_requests')
-            .insert({
-                employee_id: req.employee.id,
-                leave_type,
-                start_date,
-                end_date,
-                total_days: totalDays,
-                reason,
-                status: 'pending'
-            })
+            .insert(insertPayload)
             .select()
             .single();
 
-        if (error) throw error;
+        if (insErr && insErr.code === 'PGRST204') {
+            delete insertPayload.attachment_url;
+            const retry = await supabase
+                .from('leave_requests')
+                .insert(insertPayload)
+                .select()
+                .single();
+            if (retry.error) throw retry.error;
+            request = retry.data;
+        } else if (insErr) {
+            throw insErr;
+        } else {
+            request = insData;
+        }
 
         // Fetch employee details for the email
         const { data: empData } = await supabase
@@ -245,8 +302,9 @@ router.post('/request', authMiddleware, async (req, res) => {
             `Start: ${start_date}\n` +
             `End: ${end_date}\n` +
             `Days: ${totalDays}\n` +
-            `Reason: ${reason || 'Not provided'}\n\n` +
-            `Approver: ${routing.approverEmail}\n` +
+            `Reason: ${reason || 'Not provided'}\n` +
+            (attachmentUrl ? `Sick Note / Document: ${attachmentUrl}\n` : '') +
+            `\nApprover: ${routing.approverEmail}\n` +
             `CC: ${routing.ccEmails.join(', ')}\n\n` +
             `Please review the request in the payroll system.`;
 

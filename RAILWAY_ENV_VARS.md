@@ -24,4 +24,5 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=<your-gmail-or-smtp-user>
 SMTP_PASS=<your-smtp-app-password>
-MAIL_FROM=no-reply@thusanangfs.co.za
+MAIL_FROM=notifications@thusanangfs.co.za
+
