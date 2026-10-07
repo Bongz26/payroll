@@ -71,6 +71,8 @@ const Calendar = () => {
                                             <img src="/assets/sick_leave.png" alt="Sick" style={styles.inlineIcon} />
                                         ) : emp.leaveType === 'annual' ? (
                                             <img src="/assets/annual_leave.png" alt="Annual" style={styles.inlineIcon} />
+                                        ) : emp.leaveType === 'overtime' ? (
+                                            <span style={{ fontSize: '14px', lineHeight: 1 }} title="Overtime Leave">⏰</span>
                                         ) : (
                                             <img src="/assets/other_leave.png" alt="Other" style={styles.inlineIcon} />
                                         )}
@@ -128,6 +130,10 @@ const Calendar = () => {
                         <div style={styles.legendItem}>
                             <img src="/assets/sick_leave.png" alt="Sick Leave" style={styles.legendIcon} />
                             <span>Sick Leave</span>
+                        </div>
+                        <div style={styles.legendItem}>
+                            <span style={{ fontSize: '18px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⏰</span>
+                            <span>Overtime Leave</span>
                         </div>
                         <div style={styles.legendItem}>
                             <img src="/assets/other_leave.png" alt="Other Leave" style={styles.legendIcon} />

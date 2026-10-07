@@ -13,6 +13,25 @@ const Leave = () => {
     const [isManager, setIsManager] = useState(false);
     const [isHR, setIsHR] = useState(false);
 
+    // Overtime Management state
+    const [employeesList, setEmployeesList] = useState([]);
+    const [overtimeAllocations, setOvertimeAllocations] = useState([]);
+    const [otSubTab, setOtSubTab] = useState('credit'); // 'credit' | 'record' | 'log'
+    const [otCreditForm, setOtCreditForm] = useState({
+        employee_id: '',
+        days: '1',
+        reason: '',
+        date_worked: format(new Date(), 'yyyy-MM-dd')
+    });
+    const [otRecordForm, setOtRecordForm] = useState({
+        employee_id: '',
+        start_date: '',
+        end_date: '',
+        reason: ''
+    });
+    const [otSubmitting, setOtSubmitting] = useState(false);
+    const [otMessage, setOtMessage] = useState(null);
+
     // UX state for approvals
     const [processingId, setProcessingId] = useState(null);
     const [rejectSubmitting, setRejectSubmitting] = useState(false);
@@ -82,6 +101,8 @@ const Leave = () => {
             if (stored) {
                 const emp = JSON.parse(stored);
                 const email = (emp.email || '').toLowerCase();
+                const job = (emp.job_title || '').toLowerCase();
+                const dept = (emp.department || '').toLowerCase();
                 const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
                 const managerFlag = managerEmails.includes(email) || job.includes('manager') || job.includes('director') || job.includes('supervisor') || dept === 'operations' || dept === 'administration';
                 const hrFlag = job.includes('hr') || dept === 'administration';
@@ -96,11 +117,89 @@ const Leave = () => {
                     const hrPendingRes = await api.get('/leave/pending/hr');
                     setHRPendingRequests(hrPendingRes.data.requests || []);
                 }
+                if (managerFlag || hrFlag) {
+                    fetchEmployeesAndAllocations();
+                }
             }
         } catch (error) {
             console.error('Error fetching leave data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchEmployeesAndAllocations = async () => {
+        try {
+            const [empRes, allocRes] = await Promise.all([
+                api.get('/leave/employees'),
+                api.get('/leave/overtime/allocations')
+            ]);
+            setEmployeesList(empRes.data.employees || []);
+            setOvertimeAllocations(allocRes.data.allocations || []);
+        } catch (err) {
+            console.error('Error fetching overtime employees/allocations:', err);
+        }
+    };
+
+    const handleCreditOvertime = async (e) => {
+        e.preventDefault();
+        if (!otCreditForm.employee_id) {
+            setOtMessage({ type: 'error', text: 'Please select an employee.' });
+            return;
+        }
+        if (!otCreditForm.days || parseFloat(otCreditForm.days) <= 0) {
+            setOtMessage({ type: 'error', text: 'Please enter a valid number of days.' });
+            return;
+        }
+        if (!otCreditForm.reason.trim()) {
+            setOtMessage({ type: 'error', text: 'Please provide a reason for the overtime credit.' });
+            return;
+        }
+
+        try {
+            setOtSubmitting(true);
+            setOtMessage(null);
+            const res = await api.post('/leave/overtime/allocate', otCreditForm);
+            setOtMessage({ type: 'success', text: res.data.message });
+            setOtCreditForm({
+                employee_id: '',
+                days: '1',
+                reason: '',
+                date_worked: format(new Date(), 'yyyy-MM-dd')
+            });
+            await Promise.all([fetchLeaveData(), fetchEmployeesAndAllocations()]);
+        } catch (err) {
+            console.error('Error allocating overtime:', err);
+            setOtMessage({ type: 'error', text: err.response?.data?.message || 'Failed to allocate overtime' });
+        } finally {
+            setOtSubmitting(false);
+        }
+    };
+
+    const handleRecordOvertimeLeave = async (e) => {
+        e.preventDefault();
+        if (!otRecordForm.employee_id || !otRecordForm.start_date || !otRecordForm.end_date) {
+            setOtMessage({ type: 'error', text: 'Please fill in employee, start date, and end date.' });
+            return;
+        }
+
+        try {
+            setOtSubmitting(true);
+            setOtMessage(null);
+            const res = await api.post('/leave/overtime/record-leave', otRecordForm);
+            setOtMessage({ type: 'success', text: res.data.message });
+            setOtRecordForm({
+                employee_id: '',
+                start_date: '',
+                end_date: '',
+                reason: ''
+            });
+            await Promise.all([fetchLeaveData(), fetchEmployeesAndAllocations()]);
+        } catch (err) {
+            console.error('Error recording overtime leave:', err);
+            setOtMessage({ type: 'error', text: err.response?.data?.message || 'Failed to record overtime leave' });
+        } finally {
+            setOtSubmitting(false);
         }
     };
 
@@ -311,7 +410,7 @@ const Leave = () => {
                                     <span style={styles.available}>
                                         {(
                                             leaveBalance.family_responsibility_total -
-                                            leaveBalance.family_responsibility_used
+                                             leaveBalance.family_responsibility_used
                                         ).toFixed(1)}
                                     </span>
                                     <span style={styles.total}>
@@ -337,6 +436,41 @@ const Leave = () => {
                             />
                         </div>
                     </div>
+
+                    <div className="card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={styles.balanceTitle}>Overtime Leave</h3>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 8px', borderRadius: '999px' }}>
+                                Manual Entry
+                            </span>
+                        </div>
+                        <div style={styles.balanceValue}>
+                            {leaveBalance ? (
+                                <>
+                                    <span style={{ color: '#D97706' }}>
+                                        {((leaveBalance.overtime_total || 0) - (leaveBalance.overtime_used || 0)).toFixed(1)}
+                                    </span>
+                                    <span style={styles.total}> / {(leaveBalance.overtime_total || 0).toFixed(1)} days</span>
+                                </>
+                            ) : (
+                                'Loading...'
+                            )}
+                        </div>
+                        <div style={styles.balanceBar}>
+                            <div
+                                style={{
+                                    ...styles.balanceBarFill,
+                                    backgroundColor: '#F59E0B',
+                                    width: leaveBalance && leaveBalance.overtime_total > 0
+                                        ? `${(((leaveBalance.overtime_total - leaveBalance.overtime_used) / leaveBalance.overtime_total) * 100)}%`
+                                        : '0%',
+                                }}
+                            />
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: '#6B7280', margin: '6px 0 0 0' }}>
+                            Credited manually by manager for overtime worked
+                        </p>
+                    </div>
                 </div>
 
                 {/* Tabs */}
@@ -360,15 +494,26 @@ const Leave = () => {
                         Leave History
                     </button>
                     {(isManager || isHR) && (
-                        <button
-                            onClick={() => setActiveTab('approvals')}
-                            style={{
-                                ...styles.tab,
-                                ...(activeTab === 'approvals' ? styles.tabActive : {}),
-                            }}
-                        >
-                            Approvals
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setActiveTab('approvals')}
+                                style={{
+                                    ...styles.tab,
+                                    ...(activeTab === 'approvals' ? styles.tabActive : {}),
+                                }}
+                            >
+                                Approvals
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('overtime')}
+                                style={{
+                                    ...styles.tab,
+                                    ...(activeTab === 'overtime' ? styles.tabActive : {}),
+                                }}
+                            >
+                                Overtime Management
+                            </button>
+                        </>
                     )}
                 </div>
 
@@ -402,10 +547,33 @@ const Leave = () => {
                                     <option value="annual">Annual Leave</option>
                                     <option value="sick">Sick Leave</option>
                                     <option value="family_responsibility">Family Responsibility</option>
+                                    <option value="overtime">Overtime Leave (Credited by Manager)</option>
                                     <option value="unpaid">Unpaid Leave</option>
                                     <option value="maternity">Maternity Leave</option>
                                     <option value="paternity">Paternity Leave</option>
                                 </select>
+                                {formData.leave_type === 'overtime' && (
+                                    <div style={{
+                                        backgroundColor: ((leaveBalance?.overtime_total || 0) - (leaveBalance?.overtime_used || 0)) > 0 ? '#FEF3C7' : '#FEE2E2',
+                                        border: `1px solid ${((leaveBalance?.overtime_total || 0) - (leaveBalance?.overtime_used || 0)) > 0 ? '#F59E0B' : '#EF4444'}`,
+                                        borderRadius: '8px',
+                                        padding: '12px 16px',
+                                        marginTop: '8px',
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        <div style={{ fontWeight: '600', color: ((leaveBalance?.overtime_total || 0) - (leaveBalance?.overtime_used || 0)) > 0 ? '#92400E' : '#991B1B' }}>
+                                            Available Overtime Balance: {((leaveBalance?.overtime_total || 0) - (leaveBalance?.overtime_used || 0)).toFixed(1)} day(s)
+                                        </div>
+                                        <div style={{ marginTop: '4px', color: '#4B5563' }}>
+                                            Overtime leave must be put in manually by your manager for extra hours or weekend shifts worked.
+                                        </div>
+                                        {((leaveBalance?.overtime_total || 0) - (leaveBalance?.overtime_used || 0)) <= 0 && (
+                                            <div style={{ marginTop: '4px', color: '#DC2626', fontWeight: '500' }}>
+                                                ⚠️ You currently have 0 overtime days. Please request your manager to credit your overtime before taking leave.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div style={styles.dateRow}>
@@ -667,6 +835,275 @@ const Leave = () => {
                                             </div>
                                         )}
                                     </>
+                                )}
+                            </div>
+                        )}
+
+                        {(isManager || isHR) && activeTab === 'overtime' && (
+                            <div className="card fade-in">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <div>
+                                        <h2 style={styles.sectionTitle}>Overtime Leave Management</h2>
+                                        <p style={{ color: '#6B7280', fontSize: '0.9rem', margin: 0 }}>
+                                            Managers must manually credit overtime earned or book approved overtime days off.
+                                        </p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem', background: '#F3F4F6', padding: '4px', borderRadius: '8px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOtSubTab('credit')}
+                                            style={{
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                background: otSubTab === 'credit' ? '#D4145A' : 'transparent',
+                                                color: otSubTab === 'credit' ? '#FFF' : '#4B5563',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            ➕ Credit Overtime Days
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOtSubTab('record')}
+                                            style={{
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                background: otSubTab === 'record' ? '#D4145A' : 'transparent',
+                                                color: otSubTab === 'record' ? '#FFF' : '#4B5563',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            📝 Book Overtime Leave
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOtSubTab('log')}
+                                            style={{
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                background: otSubTab === 'log' ? '#D4145A' : 'transparent',
+                                                color: otSubTab === 'log' ? '#FFF' : '#4B5563',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            📋 Allocation History
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {otMessage && (
+                                    <div
+                                        style={{
+                                            ...styles.messageBox,
+                                            ...(otMessage.type === 'success' ? styles.successBox : styles.errorBox),
+                                        }}
+                                    >
+                                        {otMessage.text}
+                                    </div>
+                                )}
+
+                                {otSubTab === 'credit' && (
+                                    <form onSubmit={handleCreditOvertime} style={{ maxWidth: '700px' }}>
+                                        <div style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+                                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#111827' }}>Manual Overtime Allocation</h4>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#6B7280' }}>
+                                                Credit overtime days earned by an employee for extra hours or weekend duty. This increases their available overtime leave balance.
+                                            </p>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Select Employee *</label>
+                                            <select
+                                                className="form-select"
+                                                value={otCreditForm.employee_id}
+                                                onChange={(e) => setOtCreditForm({ ...otCreditForm, employee_id: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">-- Choose Employee --</option>
+                                                {employeesList.map(emp => (
+                                                    <option key={emp.id} value={emp.id}>
+                                                        {emp.first_name} {emp.last_name} ({emp.employee_number}) — {emp.department || 'General'} (Available: {emp.overtime_available.toFixed(1)} days)
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div style={styles.dateRow}>
+                                            <div className="form-group" style={{ flex: 1 }}>
+                                                <label className="form-label">Days to Credit *</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.5"
+                                                    min="0.5"
+                                                    className="form-input"
+                                                    value={otCreditForm.days}
+                                                    onChange={(e) => setOtCreditForm({ ...otCreditForm, days: e.target.value })}
+                                                    required
+                                                    placeholder="e.g. 1.0 or 0.5"
+                                                />
+                                                <small style={{ color: '#6B7280', fontSize: '0.75rem' }}>Full day (1.0), half day (0.5), 2 days (2.0)</small>
+                                            </div>
+
+                                            <div className="form-group" style={{ flex: 1 }}>
+                                                <label className="form-label">Date Overtime Worked</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-input"
+                                                    value={otCreditForm.date_worked}
+                                                    onChange={(e) => setOtCreditForm({ ...otCreditForm, date_worked: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Reason / Work Details *</label>
+                                            <textarea
+                                                className="form-textarea"
+                                                placeholder="Describe the overtime work (e.g. Weekend funeral service at Bethlehem branch, Standby night shift coverage)..."
+                                                value={otCreditForm.reason}
+                                                onChange={(e) => setOtCreditForm({ ...otCreditForm, reason: e.target.value })}
+                                                required
+                                                rows={3}
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary btn-lg"
+                                            disabled={otSubmitting}
+                                            style={{ width: '100%' }}
+                                        >
+                                            {otSubmitting ? 'Crediting Overtime...' : 'Credit Overtime Leave'}
+                                        </button>
+                                    </form>
+                                )}
+
+                                {otSubTab === 'record' && (
+                                    <form onSubmit={handleRecordOvertimeLeave} style={{ maxWidth: '700px' }}>
+                                        <div style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+                                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#111827' }}>Direct Overtime Leave Entry</h4>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#6B7280' }}>
+                                                Directly schedule and approve an employee taking time off for overtime worked. This creates an approved overtime leave record and schedules it in the calendar.
+                                            </p>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Select Employee *</label>
+                                            <select
+                                                className="form-select"
+                                                value={otRecordForm.employee_id}
+                                                onChange={(e) => setOtRecordForm({ ...otRecordForm, employee_id: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">-- Choose Employee --</option>
+                                                {employeesList.map(emp => (
+                                                    <option key={emp.id} value={emp.id}>
+                                                        {emp.first_name} {emp.last_name} ({emp.employee_number}) — Available: {emp.overtime_available.toFixed(1)} days
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div style={styles.dateRow}>
+                                            <div className="form-group" style={{ flex: 1 }}>
+                                                <label className="form-label">Start Date *</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-input"
+                                                    value={otRecordForm.start_date}
+                                                    onChange={(e) => setOtRecordForm({ ...otRecordForm, start_date: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ flex: 1 }}>
+                                                <label className="form-label">End Date *</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-input"
+                                                    value={otRecordForm.end_date}
+                                                    onChange={(e) => setOtRecordForm({ ...otRecordForm, end_date: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Reason / Notes</label>
+                                            <textarea
+                                                className="form-textarea"
+                                                placeholder="Reason for taking overtime leave (e.g. Taking Monday off in lieu of Saturday funeral work)..."
+                                                value={otRecordForm.reason}
+                                                onChange={(e) => setOtRecordForm({ ...otRecordForm, reason: e.target.value })}
+                                                rows={3}
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary btn-lg"
+                                            disabled={otSubmitting}
+                                            style={{ width: '100%' }}
+                                        >
+                                            {otSubmitting ? 'Booking Leave...' : 'Book Overtime Leave for Employee'}
+                                        </button>
+                                    </form>
+                                )}
+
+                                {otSubTab === 'log' && (
+                                    <div>
+                                        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Manual Overtime Allocation History</h3>
+                                        {overtimeAllocations.length === 0 ? (
+                                            <div style={styles.emptyState}>
+                                                <p>No manual overtime allocations recorded yet.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="table-container">
+                                                <table className="table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Date Credited</th>
+                                                            <th>Employee</th>
+                                                            <th>Days</th>
+                                                            <th>Date Worked</th>
+                                                            <th>Reason</th>
+                                                            <th>Credited By</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {overtimeAllocations.map(item => (
+                                                            <tr key={item.id}>
+                                                                <td>{format(new Date(item.created_at), 'MMM dd, yyyy')}</td>
+                                                                <td>
+                                                                    <strong>{item.employees?.first_name} {item.employees?.last_name}</strong>
+                                                                    <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>{item.employees?.employee_number}</div>
+                                                                </td>
+                                                                <td>
+                                                                    <span style={{ fontWeight: '700', color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 8px', borderRadius: '4px' }}>
+                                                                        +{parseFloat(item.days).toFixed(1)} days
+                                                                    </span>
+                                                                </td>
+                                                                <td>{item.date_worked ? format(new Date(item.date_worked), 'MMM dd, yyyy') : 'N/A'}</td>
+                                                                <td>{item.reason}</td>
+                                                                <td>{item.allocators ? `${item.allocators.first_name} ${item.allocators.last_name}` : 'Manager'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         )}

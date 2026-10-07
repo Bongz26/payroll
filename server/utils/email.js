@@ -5,7 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const resendApiKey = process.env.RESEND_API_KEY || process.env.SMTP_PASS;
 const mailFrom = process.env.MAIL_FROM || 'onboarding@resend.dev';
 
-const resend = new Resend(resendApiKey);
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const sendEmail = async ({ to, subject, text, html }) => {
     if (!resendApiKey) {

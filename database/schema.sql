@@ -44,7 +44,7 @@ CREATE TABLE payslips (
 CREATE TABLE leave_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    leave_type VARCHAR(50) NOT NULL CHECK (leave_type IN ('annual', 'sick', 'family_responsibility', 'unpaid', 'maternity', 'paternity')),
+    leave_type VARCHAR(50) NOT NULL CHECK (leave_type IN ('annual', 'sick', 'family_responsibility', 'unpaid', 'maternity', 'paternity', 'overtime')),
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     total_days INTEGER NOT NULL,
@@ -73,8 +73,23 @@ CREATE TABLE leave_balances (
     sick_used DECIMAL(4, 1) DEFAULT 0,
     family_responsibility_total INTEGER DEFAULT 3,
     family_responsibility_used DECIMAL(4, 1) DEFAULT 0,
+    overtime_total DECIMAL(5, 1) DEFAULT 0,
+    overtime_used DECIMAL(5, 1) DEFAULT 0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(employee_id, year)
+);
+
+-- ========================================
+-- OVERTIME ALLOCATIONS TABLE (Manual Manager Grant)
+-- ========================================
+CREATE TABLE overtime_allocations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    allocated_by UUID REFERENCES employees(id),
+    days DECIMAL(5, 1) NOT NULL,
+    reason TEXT NOT NULL,
+    date_worked DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ========================================

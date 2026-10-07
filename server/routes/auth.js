@@ -212,18 +212,24 @@ router.post('/register', async (req, res) => {
         // Create default leave balance for the current year
         try {
             const year = new Date().getFullYear();
-            await supabase.from('leave_balances').insert([
-                {
-                    employee_id: newEmployee.id,
-                    year,
-                    annual_total: 21,
-                    annual_used: 0,
-                    sick_total: 30,
-                    sick_used: 0,
-                    family_responsibility_total: 3,
-                    family_responsibility_used: 0
-                }
-            ]);
+            const lbPayload = {
+                employee_id: newEmployee.id,
+                year,
+                annual_total: 21,
+                annual_used: 0,
+                sick_total: 30,
+                sick_used: 0,
+                family_responsibility_total: 3,
+                family_responsibility_used: 0,
+                overtime_total: 0,
+                overtime_used: 0
+            };
+            const { error: lbErr } = await supabase.from('leave_balances').insert([lbPayload]);
+            if (lbErr && (lbErr.code === 'PGRST204' || lbErr.message?.includes('overtime'))) {
+                delete lbPayload.overtime_total;
+                delete lbPayload.overtime_used;
+                await supabase.from('leave_balances').insert([lbPayload]);
+            }
         } catch (lbErr) {
             console.warn('Failed to create leave balance for new employee:', lbErr);
         }

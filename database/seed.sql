@@ -92,20 +92,20 @@ SELECT
 FROM employees WHERE employee_number = 'EMP006';
 
 -- Sample Leave Balances (Current Year 2026)
-INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used)
-SELECT id, 2026, 21, 5.0, 30, 2.0, 3, 0.0 FROM employees WHERE employee_number = 'EMP001';
+INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used, overtime_total, overtime_used)
+SELECT id, 2026, 21, 5.0, 30, 2.0, 3, 0.0, 2.0, 0.0 FROM employees WHERE employee_number = 'EMP001';
 
-INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used)
-SELECT id, 2026, 21, 8.5, 30, 1.0, 3, 1.0 FROM employees WHERE employee_number = 'EMP002';
+INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used, overtime_total, overtime_used)
+SELECT id, 2026, 21, 8.5, 30, 1.0, 3, 1.0, 0.0, 0.0 FROM employees WHERE employee_number = 'EMP002';
 
-INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used)
-SELECT id, 2026, 21, 3.0, 30, 0.0, 3, 0.0 FROM employees WHERE employee_number = 'EMP003';
+INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used, overtime_total, overtime_used)
+SELECT id, 2026, 21, 3.0, 30, 0.0, 3, 0.0, 1.0, 0.0 FROM employees WHERE employee_number = 'EMP003';
 
-INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used)
-SELECT id, 2026, 21, 0.0, 30, 0.0, 3, 0.0 FROM employees WHERE employee_number = 'EMP004';
+INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used, overtime_total, overtime_used)
+SELECT id, 2026, 21, 0.0, 30, 0.0, 3, 0.0, 0.0, 0.0 FROM employees WHERE employee_number = 'EMP004';
 
-INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used)
-SELECT id, 2026, 21, 12.0, 30, 3.0, 3, 0.0 FROM employees WHERE employee_number = 'EMP005';
+INSERT INTO leave_balances (employee_id, year, annual_total, annual_used, sick_total, sick_used, family_responsibility_total, family_responsibility_used, overtime_total, overtime_used)
+SELECT id, 2026, 21, 12.0, 30, 3.0, 3, 0.0, 0.0, 0.0 FROM employees WHERE employee_number = 'EMP005';
 
 -- Sample Leave Requests
 INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, created_at)

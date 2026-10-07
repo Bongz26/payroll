@@ -128,6 +128,42 @@ const Dashboard = () => {
                             </p>
                         </div>
                     </div>
+
+                    {/* Overtime Leave Card */}
+                    <Link to="/leave" className="card" style={styles.statCard}>
+                        <div style={styles.statIcon}>
+                            <div style={{
+                                width: '50px',
+                                height: '50px',
+                                borderRadius: '12px',
+                                backgroundColor: '#FEF3C7',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1.75rem'
+                            }}>
+                                ⏰
+                            </div>
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <h3 style={styles.statTitle}>Overtime Leave</h3>
+                                <span style={{ fontSize: '0.65rem', fontWeight: '600', color: '#D97706', backgroundColor: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                                    Manual
+                                </span>
+                            </div>
+                            <p style={styles.statValue}>
+                                {leaveBalance ? (
+                                    <>
+                                        {((leaveBalance.overtime_total || 0) - (leaveBalance.overtime_used || 0)).toFixed(1)} days
+                                        <span style={styles.statSubtext}> available</span>
+                                    </>
+                                ) : (
+                                    'Loading...'
+                                )}
+                            </p>
+                        </div>
+                    </Link>
                 </div>
 
                 {/* Quick Actions */}
