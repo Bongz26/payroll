@@ -23,7 +23,8 @@ const APPROVAL_GROUPS = {
             'paulinah.lemphane@thusanang.co.za',
             'puleng.mofokeng@thusanang.co.za',
             'teboho.motaung@thusanang.co.za',
-            'tlalane.sebetoane@thusanang.co.za'
+            'tlalane.sebetoane@thusanang.co.za',
+            'disebo.chabeli@thusanang.co.za'
         ]
     },
 
@@ -110,8 +111,8 @@ function isApproverForApplicant(managerEmail, applicantEmail) {
     // Direct match check
     if (cleanManager === routing.approverEmail.toLowerCase()) return true;
     
-    // Super admins / HR directors have global approval rights
-    const globalApprovers = ['admin@thusanangfs.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'matla.matsipa@thusanang.co.za'];
+    // Super admins / HR directors / Executive management have global approval rights
+    const globalApprovers = ['admin@thusanangfs.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'lebo.chabana@thusanang.co.za'];
     if (globalApprovers.includes(cleanManager)) return true;
 
     return false;

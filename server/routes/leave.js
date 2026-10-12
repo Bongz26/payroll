@@ -13,12 +13,12 @@ const isManagerUser = async (employeeId) => {
         const { data: caller } = await supabase.from('employees').select('email, job_title, department').eq('id', employeeId).single();
         if (!caller) return false;
         const email = (caller.email || '').toLowerCase();
-        const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
+        const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'lebo.chabana@thusanang.co.za'];
 
         if (managerEmails.includes(email)) return true;
         const job = (caller.job_title || '').toLowerCase();
         const dept = (caller.department || '').toLowerCase();
-        return job.includes('manager') || job.includes('director') || job.includes('supervisor') || dept === 'operations' || dept === 'administration';
+        return job.includes('manager') || job.includes('director') || job.includes('supervisor') || job.includes('coo') || job.includes('chief') || dept === 'operations' || dept === 'administration' || dept === 'management';
     } catch (e) {
         return false;
     }
@@ -42,7 +42,7 @@ const getManagerEmails = async () => {
     return (employees || [])
         .filter(emp => {
             const job = (emp.job_title || '').toLowerCase();
-            return job.includes('manager') || job.includes('director') || job.includes('supervisor');
+            return job.includes('manager') || job.includes('director') || job.includes('supervisor') || job.includes('coo') || job.includes('chief');
         })
         .map(emp => emp.email)
         .filter(Boolean);

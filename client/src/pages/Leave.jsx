@@ -103,8 +103,8 @@ const Leave = () => {
                 const email = (emp.email || '').toLowerCase();
                 const job = (emp.job_title || '').toLowerCase();
                 const dept = (emp.department || '').toLowerCase();
-                const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za'];
-                const managerFlag = managerEmails.includes(email) || job.includes('manager') || job.includes('director') || job.includes('supervisor') || dept === 'operations' || dept === 'administration';
+                const managerEmails = ['admin@thusanangfs.co.za', 'manager@thusanangfs.co.za', 'fleet@thusanangfs.co.za', 'lucas.sibeko@thusanang.co.za', 'majobo.mofokeng@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'lebo.chabana@thusanang.co.za'];
+                const managerFlag = managerEmails.includes(email) || job.includes('manager') || job.includes('director') || job.includes('supervisor') || job.includes('coo') || job.includes('chief') || dept === 'operations' || dept === 'administration' || dept === 'management';
                 const hrFlag = job.includes('hr') || dept === 'administration';
 
                 setIsManager(managerFlag);
