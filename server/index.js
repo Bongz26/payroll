@@ -24,14 +24,33 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000,http:
 
 app.use(cors({
     origin: (origin, callback) => {
-        // allow requests with no origin (like mobile apps or curl requests)
+        // Allow requests with no origin (like mobile apps, curl, server-to-server)
         if (!origin) return callback(null, true);
 
         const cleanOrigin = origin.replace(/\/$/, '');
+
+        // Check explicit allowed origins list
         if (allowedOrigins.includes(cleanOrigin)) {
             return callback(null, true);
         }
-        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+
+        // Auto-allow Render web service domain (via RENDER_EXTERNAL_URL)
+        if (process.env.RENDER_EXTERNAL_URL && cleanOrigin === process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')) {
+            return callback(null, true);
+        }
+
+        // Auto-allow any onrender.com domain for this app
+        if (/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(cleanOrigin)) {
+            return callback(null, true);
+        }
+
+        // Auto-allow localhost / 127.0.0.1 for local dev
+        if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) {
+            return callback(null, true);
+        }
+
+        // Reject without throwing an unhandled Error (which causes 500 Internal Server Error)
+        callback(null, false);
     },
     credentials: true
 }));
