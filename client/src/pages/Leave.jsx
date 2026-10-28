@@ -3,6 +3,28 @@ import Navbar from '../components/Navbar';
 import api from '../utils/api';
 import { format } from 'date-fns';
 
+/**
+ * Calculate working leave days between two dates inclusive, excluding Sundays.
+ * Thusanang Funeral Services works Monday through Saturday; Sunday is a non-working day.
+ */
+const calculateWorkingLeaveDays = (startDateStr, endDateStr) => {
+    if (!startDateStr || !endDateStr) return null;
+    const [sy, sm, sd] = startDateStr.split('-').map(Number);
+    const [ey, em, ed] = endDateStr.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
+    if (end < start) return -1;
+    let count = 0;
+    const cur = new Date(start);
+    while (cur <= end) {
+        if (cur.getDay() !== 0) { // Sunday is 0
+            count++;
+        }
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+};
+
 const Leave = () => {
     const [activeTab, setActiveTab] = useState('request');
     const [leaveBalance, setLeaveBalance] = useState(null);
@@ -600,6 +622,32 @@ const Leave = () => {
                                 </div>
                             </div>
 
+                            {formData.start_date && formData.end_date && (() => {
+                                const days = calculateWorkingLeaveDays(formData.start_date, formData.end_date);
+                                if (days === -1) {
+                                    return (
+                                        <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '0.875rem' }}>
+                                            ⚠️ End date cannot be before start date
+                                        </div>
+                                    );
+                                }
+                                if (days === 0) {
+                                    return (
+                                        <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E', fontSize: '0.875rem' }}>
+                                            ℹ️ Selected date is Sunday (Sundays are non-working days)
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #93C5FD', color: '#1E40AF', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span>📅</span>
+                                        <span>
+                                            <strong>{days} working day{days > 1 ? 's' : ''}</strong> (Monday–Saturday; Sunday excluded)
+                                        </span>
+                                    </div>
+                                );
+                            })()}
+
                             <div className="form-group">
                                 <label className="form-label">Reason (Optional)</label>
                                 <textarea
@@ -1038,6 +1086,32 @@ const Leave = () => {
                                                 />
                                             </div>
                                         </div>
+
+                                        {otRecordForm.start_date && otRecordForm.end_date && (() => {
+                                            const days = calculateWorkingLeaveDays(otRecordForm.start_date, otRecordForm.end_date);
+                                            if (days === -1) {
+                                                return (
+                                                    <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '0.875rem' }}>
+                                                        ⚠️ End date cannot be before start date
+                                                    </div>
+                                                );
+                                            }
+                                            if (days === 0) {
+                                                return (
+                                                    <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E', fontSize: '0.875rem' }}>
+                                                        ℹ️ Selected date is Sunday (Sundays are non-working days)
+                                                    </div>
+                                                );
+                                            }
+                                            return (
+                                                <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #93C5FD', color: '#1E40AF', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span>📅</span>
+                                                    <span>
+                                                        <strong>{days} working day{days > 1 ? 's' : ''}</strong> will be recorded (Sundays excluded)
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
 
                                         <div className="form-group">
                                             <label className="form-label">Reason / Notes</label>

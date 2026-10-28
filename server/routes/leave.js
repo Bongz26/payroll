@@ -83,6 +83,22 @@ const notifyApprovers = async ({ subject, text, html, recipients }) => {
         console.error('Email notification failed:', error);
     }
 };
+
+/**
+ * Calculate working leave days between two dates inclusive, excluding Sundays.
+ * Thusanang Funeral Services works Monday through Saturday; Sunday is a non-working day.
+ * Returns -1 if end date is before start date, or count of working days (Mon-Sat).
+ */
+const calculateWorkingLeaveDays = (startDate, endDate) => {
+    const start = typeof startDate === 'string' ? parseISO(startDate) : startDate;
+    const end = typeof endDate === 'string' ? parseISO(endDate) : endDate;
+
+    if (end < start) return -1;
+
+    const days = eachDayOfInterval({ start, end });
+    return days.filter(day => day.getDay() !== 0).length;
+};
+
 /**
  * GET /api/leave/balance
  * Get leave balance for the current year
@@ -200,15 +216,20 @@ router.post('/request', authMiddleware, async (req, res) => {
             });
         }
 
-        // Calculate total days
-        const startDate = parseISO(start_date);
-        const endDate = parseISO(end_date);
-        const totalDays = differenceInDays(endDate, startDate) + 1;
+        // Calculate working leave days (Monday–Saturday; Sunday excluded)
+        const totalDays = calculateWorkingLeaveDays(start_date, end_date);
 
-        if (totalDays <= 0) {
+        if (totalDays === -1) {
             return res.status(400).json({
                 success: false,
-                message: 'End date must be after start date'
+                message: 'End date must be after or equal to start date'
+            });
+        }
+
+        if (totalDays === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Selected date range contains no working days (Sundays are non-working days)'
             });
         }
 
@@ -418,6 +439,9 @@ router.get('/calendar', authMiddleware, async (req, res) => {
             const days = eachDayOfInterval({ start, end });
 
             days.forEach(day => {
+                // Skip Sundays as they are non-working days
+                if (day.getDay() === 0) return;
+
                 const dateKey = format(day, 'yyyy-MM-dd');
                 if (!calendarData[dateKey]) {
                     calendarData[dateKey] = [];
@@ -957,12 +981,14 @@ router.post('/overtime/record-leave', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Employee, start date, and end date are required' });
         }
 
-        const startDate = parseISO(start_date);
-        const endDate = parseISO(end_date);
-        const totalDays = differenceInDays(endDate, startDate) + 1;
+        const totalDays = calculateWorkingLeaveDays(start_date, end_date);
 
-        if (totalDays <= 0) {
-            return res.status(400).json({ success: false, message: 'End date must be after start date' });
+        if (totalDays === -1) {
+            return res.status(400).json({ success: false, message: 'End date must be after or equal to start date' });
+        }
+
+        if (totalDays === 0) {
+            return res.status(400).json({ success: false, message: 'Selected date range contains no working days (Sundays are non-working days)' });
         }
 
         const { data: targetEmployee, error: empErr } = await supabase

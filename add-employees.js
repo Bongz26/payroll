@@ -39,6 +39,17 @@ const NEW_EMPLOYEES = [
         job_title: 'COO',
         hire_date: TODAY,
         status: 'active'
+    },
+    {
+        first_name: 'David',
+        last_name: 'Mphasane',
+        id_number: '8901305362080',
+        employee_number: 'TFS-890130',
+        email: 'david.mphasane@thusanang.co.za',
+        department: null,
+        job_title: null,
+        hire_date: '2026-08-10',
+        status: 'active'
     }
 ];
 
