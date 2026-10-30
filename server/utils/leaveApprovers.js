@@ -112,7 +112,7 @@ function isApproverForApplicant(managerEmail, applicantEmail) {
     if (cleanManager === routing.approverEmail.toLowerCase()) return true;
     
     // Super admins / HR directors / Executive management have global approval rights
-    const globalApprovers = ['admin@thusanangfs.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'lebo.chabana@thusanang.co.za'];
+    const globalApprovers = ['admin@thusanangfs.co.za', 'sarah.dlamini@thusanangfs.co.za', 'support@thusanangfs.co.za', 'bongz.dev@thusanang.co.za', 'matla.matsipa@thusanang.co.za', 'lebo.chabana@thusanang.co.za', 'tsepo.chabana@thusanang.co.za'];
     if (globalApprovers.includes(cleanManager)) return true;
 
     return false;

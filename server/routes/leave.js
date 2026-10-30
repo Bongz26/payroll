@@ -24,11 +24,15 @@ const isManagerUser = async (employeeId) => {
     }
 };
 
+// Users granted HR review access regardless of job title
+const HR_REVIEWER_EMAILS = ['tsepo.chabana@thusanang.co.za'];
+
 // Helper to check HR role
 const isHRUser = async (employeeId) => {
     try {
-        const { data: caller } = await supabase.from('employees').select('job_title, department').eq('id', employeeId).single();
+        const { data: caller } = await supabase.from('employees').select('email, job_title, department').eq('id', employeeId).single();
         if (!caller) return false;
+        if (HR_REVIEWER_EMAILS.includes((caller.email || '').toLowerCase())) return true;
         const job = (caller.job_title || '').toLowerCase();
         const dept = (caller.department || '').toLowerCase();
         return job.includes('hr') || dept === 'administration';
@@ -53,7 +57,7 @@ const getHREmails = async () => {
     return (employees || [])
         .filter(emp => {
             const job = (emp.job_title || '').toLowerCase();
-            return job.includes('hr');
+            return job.includes('hr') || HR_REVIEWER_EMAILS.includes((emp.email || '').toLowerCase());
         })
         .map(emp => emp.email)
         .filter(Boolean);
