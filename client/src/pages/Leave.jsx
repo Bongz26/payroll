@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../utils/api';
 import { format } from 'date-fns';
@@ -70,6 +70,8 @@ const Leave = () => {
         reason: '',
     });
     const [attachmentInfo, setAttachmentInfo] = useState(null);
+    const [fileReading, setFileReading] = useState(false);
+    const fileInputRef = useRef(null);
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState(null);
 
@@ -82,8 +84,10 @@ const Leave = () => {
         if (file.size > 5 * 1024 * 1024) {
             setMessage({ type: 'error', text: 'File size must be under 5MB.' });
             e.target.value = '';
+            setAttachmentInfo(null);
             return;
         }
+        setFileReading(true);
         const reader = new FileReader();
         reader.onloadend = () => {
             setAttachmentInfo({
@@ -91,6 +95,11 @@ const Leave = () => {
                 attachmentName: file.name,
                 attachmentType: file.type
             });
+            setFileReading(false);
+        };
+        reader.onerror = () => {
+            setMessage({ type: 'error', text: 'Failed to read the selected file.' });
+            setFileReading(false);
         };
         reader.readAsDataURL(file);
     };
@@ -330,6 +339,9 @@ const Leave = () => {
                 reason: '',
             });
             setAttachmentInfo(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
             fetchLeaveData(); // Refresh data
         } catch (error) {
             setMessage({
@@ -664,6 +676,7 @@ const Leave = () => {
                                     Attach Sick Note / Document {formData.leave_type === 'sick' && <span style={{ color: '#DC2626' }}>(Recommended for Sick Leave)</span>}
                                 </label>
                                 <input
+                                    ref={fileInputRef}
                                     type="file"
                                     accept="image/*,.pdf,.doc,.docx"
                                     className="form-input"
@@ -678,10 +691,10 @@ const Leave = () => {
                             <button
                                 type="submit"
                                 className="btn btn-primary btn-lg"
-                                disabled={submitting}
+                                disabled={submitting || fileReading}
                                 style={{ width: '100%' }}
                             >
-                                {submitting ? 'Submitting...' : 'Submit Leave Request'}
+                                {submitting ? 'Submitting...' : fileReading ? 'Reading attachment...' : 'Submit Leave Request'}
                             </button>
                         </form>
                     </div>

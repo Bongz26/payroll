@@ -55,8 +55,9 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Allow up to 10MB JSON payloads to support base64-encoded sick notes / attachments (up to 5MB raw file size)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Rate limiter — auth routes: max 20 requests per 15 minutes per IP
 const authLimiter = rateLimit({
@@ -114,6 +115,12 @@ if (process.env.NODE_ENV === 'production') {
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
+    if (err.type === 'entity.too.large' || err.status === 413) {
+        return res.status(413).json({
+            success: false,
+            message: 'Attachment is too large. Maximum allowed file size is 5MB.'
+        });
+    }
     res.status(500).json({
         success: false,
         message: 'Internal server error',

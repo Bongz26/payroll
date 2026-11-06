@@ -294,13 +294,23 @@ router.post('/request', authMiddleware, async (req, res) => {
                 const base64Data = req.body.attachmentData.replace(/^data:[^;]+;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
                 const origName = req.body.attachmentName || 'document.pdf';
-                const ext = origName.split('.').pop() || 'pdf';
+                const ext = (origName.split('.').pop() || 'pdf').replace(/[^a-zA-Z0-9]/g, '') || 'pdf';
                 const fileName = `sicknote_${req.employee.id}_${Date.now()}.${ext}`;
                 const contentType = req.body.attachmentType || 'application/octet-stream';
 
-                const { data: uploadData, error: uploadErr } = await supabase.storage
+                let { data: uploadData, error: uploadErr } = await supabase.storage
                     .from('sick-notes')
                     .upload(fileName, buffer, { contentType, upsert: true });
+
+                // Auto-create bucket if it does not exist yet
+                if (uploadErr && (uploadErr.message?.toLowerCase().includes('not found') || String(uploadErr.statusCode) === '404')) {
+                    await supabase.storage.createBucket('sick-notes', { public: true });
+                    const retryUpload = await supabase.storage
+                        .from('sick-notes')
+                        .upload(fileName, buffer, { contentType, upsert: true });
+                    uploadData = retryUpload.data;
+                    uploadErr = retryUpload.error;
+                }
 
                 if (!uploadErr && uploadData) {
                     const { data: publicUrlData } = supabase.storage
@@ -337,7 +347,7 @@ router.post('/request', authMiddleware, async (req, res) => {
             .select()
             .single();
 
-        if (insErr && insErr.code === 'PGRST204') {
+        if (insErr && (insErr.code === 'PGRST204' || insErr.code === '42703' || insErr.message?.includes('attachment_url'))) {
             delete insertPayload.attachment_url;
             const retry = await supabase
                 .from('leave_requests')
