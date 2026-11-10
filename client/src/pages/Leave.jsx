@@ -322,8 +322,25 @@ const Leave = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
         setMessage(null);
+
+        const days = calculateWorkingLeaveDays(formData.start_date, formData.end_date);
+        if (days === -1) {
+            setMessage({ type: 'error', text: 'End date must be on or after start date.' });
+            return;
+        }
+        if (days === 0) {
+            setMessage({ type: 'error', text: 'Selected date range contains no working days (Sundays are non-working days).' });
+            return;
+        }
+
+        const maxDays = formData.leave_type === 'maternity' ? 120 : (formData.leave_type === 'unpaid' ? 90 : 60);
+        if (days > maxDays) {
+            setMessage({ type: 'error', text: `Leave duration cannot exceed ${maxDays} working days. Please verify the year and dates for typos.` });
+            return;
+        }
+
+        setSubmitting(true);
 
         try {
             const payload = {
@@ -618,6 +635,8 @@ const Leave = () => {
                                         type="date"
                                         className="form-input"
                                         value={formData.start_date}
+                                        min={`${new Date().getFullYear() - 1}-01-01`}
+                                        max={`${new Date().getFullYear() + 1}-12-31`}
                                         onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                         required
                                     />
@@ -629,6 +648,8 @@ const Leave = () => {
                                         type="date"
                                         className="form-input"
                                         value={formData.end_date}
+                                        min={formData.start_date || `${new Date().getFullYear() - 1}-01-01`}
+                                        max={`${new Date().getFullYear() + 1}-12-31`}
                                         onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                         required
                                     />
@@ -648,6 +669,14 @@ const Leave = () => {
                                     return (
                                         <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E', fontSize: '0.875rem' }}>
                                             ℹ️ Selected date is Sunday (Sundays are non-working days)
+                                        </div>
+                                    );
+                                }
+                                const maxDays = formData.leave_type === 'maternity' ? 120 : (formData.leave_type === 'unpaid' ? 90 : 60);
+                                if (days > maxDays) {
+                                    return (
+                                        <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '0.875rem' }}>
+                                            ⚠️ Requested duration of <strong>{days} working days</strong> exceeds maximum allowed ({maxDays} days). Please check the year and dates for typos.
                                         </div>
                                     );
                                 }

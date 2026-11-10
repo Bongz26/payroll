@@ -1,7 +1,7 @@
 const express = require('express');
 const { supabase } = require('../config/database');
 const authMiddleware = require('../middleware/auth');
-const { format, differenceInDays, parseISO, eachDayOfInterval } = require('date-fns');
+const { format, differenceInDays, parseISO, eachDayOfInterval, isValid } = require('date-fns');
 const { sendEmail } = require('../utils/email');
 const { getApprovalRouting, isApproverForApplicant } = require('../utils/leaveApprovers');
 
@@ -220,6 +220,51 @@ router.post('/request', authMiddleware, async (req, res) => {
             });
         }
 
+        const validLeaveTypes = ['annual', 'sick', 'family_responsibility', 'overtime', 'unpaid', 'maternity', 'paternity'];
+        if (!validLeaveTypes.includes(leave_type)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid leave type selected'
+            });
+        }
+
+        // Validate date format YYYY-MM-DD
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dates must be in valid YYYY-MM-DD format'
+            });
+        }
+
+        const startDateParsed = parseISO(start_date);
+        const endDateParsed = parseISO(end_date);
+        if (!isValid(startDateParsed) || !isValid(endDateParsed)) {
+            return res.status(400).json({
+                success: false,
+                message: 'One or more selected dates are invalid'
+            });
+        }
+
+        // Prevent dates too far in past or future (safeguard against year typos like 2029)
+        const now = new Date();
+        const minStartDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        const maxEndDate = new Date(now.getFullYear() + 1, 11, 31);
+
+        if (startDateParsed < minStartDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Leave start date cannot be more than 1 year in the past'
+            });
+        }
+
+        if (endDateParsed > maxEndDate) {
+            return res.status(400).json({
+                success: false,
+                message: `Leave end date cannot be beyond December 31, ${maxEndDate.getFullYear()} (please check year for typos)`
+            });
+        }
+
         // Calculate working leave days (Monday–Saturday; Sunday excluded)
         const totalDays = calculateWorkingLeaveDays(start_date, end_date);
 
@@ -234,6 +279,33 @@ router.post('/request', authMiddleware, async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Selected date range contains no working days (Sundays are non-working days)'
+            });
+        }
+
+        // Maximum duration safeguard against typos / multi-year accidental spans
+        const maxAllowedDays = leave_type === 'maternity' ? 120 : (leave_type === 'unpaid' ? 90 : 60);
+        if (totalDays > maxAllowedDays) {
+            return res.status(400).json({
+                success: false,
+                message: `Leave duration cannot exceed ${maxAllowedDays} working days. Please verify your start and end dates.`
+            });
+        }
+
+        // Overlap safeguard: prevent duplicate active leave requests for the same period
+        const { data: overlapping } = await supabase
+            .from('leave_requests')
+            .select('id, start_date, end_date, leave_type')
+            .eq('employee_id', req.employee.id)
+            .in('status', ['pending', 'approved'])
+            .lte('start_date', end_date)
+            .gte('end_date', start_date)
+            .limit(1);
+
+        if (overlapping && overlapping.length > 0) {
+            const conflict = overlapping[0];
+            return res.status(400).json({
+                success: false,
+                message: `You already have an active leave request (${conflict.leave_type.replace(/_/g, ' ')}) from ${conflict.start_date} to ${conflict.end_date} covering these dates.`
             });
         }
 
@@ -253,6 +325,48 @@ router.post('/request', authMiddleware, async (req, res) => {
                     return res.status(400).json({
                         success: false,
                         message: `Insufficient leave balance. You have ${available} days available.`
+                    });
+                }
+            }
+        }
+
+        // Check leave balance for sick leave
+        if (leave_type === 'sick') {
+            const currentYear = new Date().getFullYear();
+            const { data: balance } = await supabase
+                .from('leave_balances')
+                .select('*')
+                .eq('employee_id', req.employee.id)
+                .eq('year', currentYear)
+                .maybeSingle();
+
+            if (balance) {
+                const available = Math.max(0, (balance.sick_total || 30) - (balance.sick_used || 0));
+                if (totalDays > available) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Insufficient sick leave balance. You have ${available} days available, but requested ${totalDays} days.`
+                    });
+                }
+            }
+        }
+
+        // Check leave balance for family responsibility leave
+        if (leave_type === 'family_responsibility') {
+            const currentYear = new Date().getFullYear();
+            const { data: balance } = await supabase
+                .from('leave_balances')
+                .select('*')
+                .eq('employee_id', req.employee.id)
+                .eq('year', currentYear)
+                .maybeSingle();
+
+            if (balance) {
+                const available = Math.max(0, (balance.family_responsibility_total || 3) - (balance.family_responsibility_used || 0));
+                if (totalDays > available) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Insufficient family responsibility balance. You have ${available} days available, but requested ${totalDays} days.`
                     });
                 }
             }
@@ -1003,6 +1117,10 @@ router.post('/overtime/record-leave', authMiddleware, async (req, res) => {
 
         if (totalDays === 0) {
             return res.status(400).json({ success: false, message: 'Selected date range contains no working days (Sundays are non-working days)' });
+        }
+
+        if (totalDays > 60) {
+            return res.status(400).json({ success: false, message: 'Overtime leave cannot exceed 60 working days per entry. Please check the dates.' });
         }
 
         const { data: targetEmployee, error: empErr } = await supabase
