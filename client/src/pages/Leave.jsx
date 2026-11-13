@@ -2,28 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../utils/api';
 import { format } from 'date-fns';
-
-/**
- * Calculate working leave days between two dates inclusive, excluding Sundays.
- * Thusanang Funeral Services works Monday through Saturday; Sunday is a non-working day.
- */
-const calculateWorkingLeaveDays = (startDateStr, endDateStr) => {
-    if (!startDateStr || !endDateStr) return null;
-    const [sy, sm, sd] = startDateStr.split('-').map(Number);
-    const [ey, em, ed] = endDateStr.split('-').map(Number);
-    const start = new Date(sy, sm - 1, sd);
-    const end = new Date(ey, em - 1, ed);
-    if (end < start) return -1;
-    let count = 0;
-    const cur = new Date(start);
-    while (cur <= end) {
-        if (cur.getDay() !== 0) { // Sunday is 0
-            count++;
-        }
-        cur.setDate(cur.getDate() + 1);
-    }
-    return count;
-};
+import { calculateWorkingLeaveDays, getLeaveBreakdown, getHolidayName } from '../utils/holidays';
 
 const Leave = () => {
     const [activeTab, setActiveTab] = useState('request');
@@ -330,7 +309,7 @@ const Leave = () => {
             return;
         }
         if (days === 0) {
-            setMessage({ type: 'error', text: 'Selected date range contains no working days (Sundays are non-working days).' });
+            setMessage({ type: 'error', text: 'Selected date range contains no working days (Sundays and South African public holidays are non-working days).' });
             return;
         }
 
@@ -657,18 +636,25 @@ const Leave = () => {
                             </div>
 
                             {formData.start_date && formData.end_date && (() => {
-                                const days = calculateWorkingLeaveDays(formData.start_date, formData.end_date);
-                                if (days === -1) {
+                                const breakdown = getLeaveBreakdown(formData.start_date, formData.end_date);
+                                if (!breakdown) {
                                     return (
                                         <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '0.875rem' }}>
                                             ⚠️ End date cannot be before start date
                                         </div>
                                     );
                                 }
+                                const days = breakdown.workingDays;
                                 if (days === 0) {
+                                    let msg = 'ℹ️ Selected date range contains no working days (Sundays and SA public holidays are non-working days)';
+                                    if (breakdown.publicHolidays.length > 0 && breakdown.sundaysCount === 0) {
+                                        msg = `ℹ️ Selected date is a South African public holiday (${breakdown.publicHolidays.map(h => h.name).join(', ')})`;
+                                    } else if (breakdown.sundaysCount > 0 && breakdown.publicHolidays.length === 0) {
+                                        msg = 'ℹ️ Selected date is Sunday (Sundays are non-working days)';
+                                    }
                                     return (
                                         <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E', fontSize: '0.875rem' }}>
-                                            ℹ️ Selected date is Sunday (Sundays are non-working days)
+                                            {msg}
                                         </div>
                                     );
                                 }
@@ -681,11 +667,22 @@ const Leave = () => {
                                     );
                                 }
                                 return (
-                                    <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #93C5FD', color: '#1E40AF', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span>📅</span>
-                                        <span>
-                                            <strong>{days} working day{days > 1 ? 's' : ''}</strong> (Monday–Saturday; Sunday excluded)
-                                        </span>
+                                    <div style={{ marginTop: '-8px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #93C5FD', color: '#1E40AF', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>📅</span>
+                                            <span>
+                                                <strong>{days} working day{days > 1 ? 's' : ''}</strong> (Monday–Saturday; Sundays & SA public holidays excluded)
+                                            </span>
+                                        </div>
+                                        {breakdown.publicHolidays.length > 0 && (
+                                            <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span>🇿🇦</span>
+                                                <span>
+                                                    <strong>{breakdown.publicHolidays.length} Public Holiday{breakdown.publicHolidays.length > 1 ? 's' : ''} excluded:</strong>{' '}
+                                                    {breakdown.publicHolidays.map(h => `${h.name} (${h.date})`).join(', ')}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })()}
@@ -1142,7 +1139,7 @@ const Leave = () => {
                                             if (days === 0) {
                                                 return (
                                                     <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E', fontSize: '0.875rem' }}>
-                                                        ℹ️ Selected date is Sunday (Sundays are non-working days)
+                                                        ℹ️ Selected date range contains no working days (Sundays and SA public holidays are non-working days)
                                                     </div>
                                                 );
                                             }
@@ -1150,7 +1147,7 @@ const Leave = () => {
                                                 <div style={{ marginTop: '-8px', marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #93C5FD', color: '#1E40AF', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <span>📅</span>
                                                     <span>
-                                                        <strong>{days} working day{days > 1 ? 's' : ''}</strong> will be recorded (Sundays excluded)
+                                                        <strong>{days} working day{days > 1 ? 's' : ''}</strong> will be recorded (Sundays & SA public holidays excluded)
                                                     </span>
                                                 </div>
                                             );

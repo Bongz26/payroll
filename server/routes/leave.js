@@ -4,6 +4,12 @@ const authMiddleware = require('../middleware/auth');
 const { format, differenceInDays, parseISO, eachDayOfInterval, isValid } = require('date-fns');
 const { sendEmail } = require('../utils/email');
 const { getApprovalRouting, isApproverForApplicant } = require('../utils/leaveApprovers');
+const {
+    calculateWorkingLeaveDays,
+    getHolidayName,
+    getLeaveBreakdown,
+    getSAPublicHolidays
+} = require('../utils/holidays');
 
 const router = express.Router();
 
@@ -88,20 +94,8 @@ const notifyApprovers = async ({ subject, text, html, recipients }) => {
     }
 };
 
-/**
- * Calculate working leave days between two dates inclusive, excluding Sundays.
- * Thusanang Funeral Services works Monday through Saturday; Sunday is a non-working day.
- * Returns -1 if end date is before start date, or count of working days (Mon-Sat).
- */
-const calculateWorkingLeaveDays = (startDate, endDate) => {
-    const start = typeof startDate === 'string' ? parseISO(startDate) : startDate;
-    const end = typeof endDate === 'string' ? parseISO(endDate) : endDate;
-
-    if (end < start) return -1;
-
-    const days = eachDayOfInterval({ start, end });
-    return days.filter(day => day.getDay() !== 0).length;
-};
+// calculateWorkingLeaveDays is imported from ../utils/holidays
+// It excludes Sundays and South African Public Holidays in compliance with the Public Holidays Act.
 
 /**
  * GET /api/leave/balance
@@ -278,7 +272,7 @@ router.post('/request', authMiddleware, async (req, res) => {
         if (totalDays === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Selected date range contains no working days (Sundays are non-working days)'
+                message: 'Selected date range contains no working days (Sundays and South African public holidays are non-working days)'
             });
         }
 
@@ -567,8 +561,8 @@ router.get('/calendar', authMiddleware, async (req, res) => {
             const days = eachDayOfInterval({ start, end });
 
             days.forEach(day => {
-                // Skip Sundays as they are non-working days
-                if (day.getDay() === 0) return;
+                // Skip Sundays and SA public holidays as they are non-working days
+                if (day.getDay() === 0 || getHolidayName(day)) return;
 
                 const dateKey = format(day, 'yyyy-MM-dd');
                 if (!calendarData[dateKey]) {
@@ -582,9 +576,20 @@ router.get('/calendar', authMiddleware, async (req, res) => {
             });
         });
 
+        // Add South African public holidays for the target month
+        const holidaysForYear = getSAPublicHolidays(targetYear);
+        const monthPrefix = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+        const publicHolidays = {};
+        Object.entries(holidaysForYear).forEach(([dStr, name]) => {
+            if (dStr.startsWith(monthPrefix)) {
+                publicHolidays[dStr] = name;
+            }
+        });
+
         res.json({
             success: true,
             calendarData,
+            publicHolidays,
             month: targetMonth,
             year: targetYear
         });
@@ -1116,7 +1121,7 @@ router.post('/overtime/record-leave', authMiddleware, async (req, res) => {
         }
 
         if (totalDays === 0) {
-            return res.status(400).json({ success: false, message: 'Selected date range contains no working days (Sundays are non-working days)' });
+            return res.status(400).json({ success: false, message: 'Selected date range contains no working days (Sundays and South African public holidays are non-working days)' });
         }
 
         if (totalDays > 60) {

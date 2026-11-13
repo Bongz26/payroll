@@ -11,9 +11,9 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { parseISO, eachDayOfInterval } = require('date-fns');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+const { calculateWorkingLeaveDays, getLeaveBreakdown } = require('./server/utils/holidays');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -21,14 +21,6 @@ const supabase = createClient(
 );
 
 const isApply = process.argv.includes('--apply');
-
-function calculateWorkingLeaveDays(startDateStr, endDateStr) {
-    const start = parseISO(startDateStr);
-    const end = parseISO(endDateStr);
-    if (end < start) return 0;
-    const days = eachDayOfInterval({ start, end });
-    return days.filter(d => d.getDay() !== 0).length; // Exclude Sunday (0)
-}
 
 async function run() {
     console.log('='.repeat(70));
@@ -58,21 +50,27 @@ async function run() {
 
     for (const req of (requests || [])) {
         const correctWorkingDays = calculateWorkingLeaveDays(req.start_date, req.end_date);
+        const breakdown = getLeaveBreakdown(req.start_date, req.end_date);
         if (correctWorkingDays !== req.total_days) {
             discrepancies.push({
                 ...req,
                 correctWorkingDays,
-                overcharged: req.total_days - correctWorkingDays
+                overcharged: req.total_days - correctWorkingDays,
+                breakdown
             });
         }
     }
 
-    console.log(`\nFound ${discrepancies.length} requests with Sunday discrepancies:\n`);
+    console.log(`\nFound ${discrepancies.length} requests with discrepancies (Sundays / Public Holidays):\n`);
 
     for (const item of discrepancies) {
         const empName = item.employees ? `${item.employees.first_name} ${item.employees.last_name}` : item.employee_id;
+        const hList = item.breakdown?.publicHolidays?.map(h => `${h.name} (${h.date})`).join(', ');
         console.log(`- Request #${item.id.slice(0, 8)} | ${empName} | Type: ${item.leave_type} | Status: ${item.status}`);
         console.log(`  Dates: ${item.start_date} to ${item.end_date} | Stored: ${item.total_days} days -> Correct: ${item.correctWorkingDays} days (Difference: ${item.overcharged} day(s))`);
+        if (hList) {
+            console.log(`  🇿🇦 Public Holidays in range: ${hList}`);
+        }
     }
 
     if (!isApply) {

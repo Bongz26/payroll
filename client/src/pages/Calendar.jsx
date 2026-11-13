@@ -17,6 +17,7 @@ import {
 const Calendar = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [calendarData, setCalendarData] = useState({});
+    const [publicHolidays, setPublicHolidays] = useState({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -31,6 +32,7 @@ const Calendar = () => {
 
             const response = await api.get(`/leave/calendar?month=${month}&year=${year}`);
             setCalendarData(response.data.calendarData || {});
+            setPublicHolidays(response.data.publicHolidays || {});
         } catch (error) {
             console.error('Error fetching calendar data:', error);
         } finally {
@@ -49,6 +51,7 @@ const Calendar = () => {
         return days.map((day, index) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const employeesOnLeave = calendarData[dateKey] || [];
+            const holidayName = publicHolidays[dateKey];
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isCurrentDay = isToday(day);
 
@@ -59,9 +62,33 @@ const Calendar = () => {
                         ...styles.calendarDay,
                         ...(isCurrentMonth ? {} : styles.otherMonth),
                         ...(isCurrentDay ? styles.today : {}),
+                        ...(holidayName ? { backgroundColor: '#FFFBEB' } : {}),
                     }}
                 >
-                    <div style={styles.dayNumber}>{format(day, 'd')}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        <div style={styles.dayNumber}>{format(day, 'd')}</div>
+                        {holidayName && <span style={{ fontSize: '12px' }} title={holidayName}>🇿🇦</span>}
+                    </div>
+                    {holidayName && (
+                        <div
+                            style={{
+                                backgroundColor: '#FEF3C7',
+                                border: '1px solid #F59E0B',
+                                color: '#92400E',
+                                borderRadius: '4px',
+                                padding: '2px 4px',
+                                fontSize: '0.7rem',
+                                fontWeight: '600',
+                                marginBottom: '4px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}
+                            title={`SA Public Holiday: ${holidayName}`}
+                        >
+                            {holidayName}
+                        </div>
+                    )}
                     {employeesOnLeave.length > 0 && (
                         <div style={styles.leaveIndicators}>
                             {employeesOnLeave.map((emp, idx) => (
@@ -138,6 +165,10 @@ const Calendar = () => {
                         <div style={styles.legendItem}>
                             <img src="/assets/other_leave.png" alt="Other Leave" style={styles.legendIcon} />
                             <span>Other Leave</span>
+                        </div>
+                        <div style={styles.legendItem}>
+                            <span style={{ fontSize: '18px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🇿🇦</span>
+                            <span style={{ fontWeight: '500' }}>SA Public Holiday (Non-working)</span>
                         </div>
                     </div>
                 </div>
